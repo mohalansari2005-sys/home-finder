@@ -33,7 +33,9 @@ def _cards(s, rows) -> list[dict]:
     out = []
     for l in rows:
         c = card(l, photos.get(l.id), drops.get(l.id))
-        c["top_reasons"] = [x["factor"] for x in (l.score_breakdown or {}).get("contributions", [])[:2]]
+        bd = l.score_breakdown or {}
+        c["top_reasons"] = [x["factor"] for x in bd.get("contributions", [])[:2]]
+        c["score_coverage"] = bd.get("coverage")  # < 0.5: most data is missing, so the score is only rough
         out.append(c)
     return out
 

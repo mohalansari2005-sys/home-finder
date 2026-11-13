@@ -39,3 +39,13 @@ def test_rescore_job(db):
     db.add(Listing(price=1_000_000)); db.commit()
     deps = WorkerDeps(session_factory=session_scope, adapters={}, llm=None, google=None, photo_sink=None, http=None)
     assert dispatch(deps, "rescore_all", {}) == {"rescored": 1}
+
+
+def test_cli_rescore_recomputes_every_listing(db):
+    from homefinder import cli
+    from homefinder.models import Listing
+    db.add(Listing(title="x", has_yard=True, has_elevator=True, score=100)); db.commit()
+    cli.main(["rescore"])
+    db.expire_all()
+    l = db.query(Listing).one()
+    assert l.score is not None and l.score < 60 and l.score_breakdown["coverage"] < 0.2

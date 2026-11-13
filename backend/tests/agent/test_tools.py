@@ -153,3 +153,12 @@ def test_create_visit_trip_tool_errors_are_reported_not_raised(db):
     assert json.loads(t.invoke({"listing_ids": [], "date": "2026-12-05", "start_time": "16:00"}))["ok"] is False
     assert json.loads(t.invoke({"listing_ids": ids[:1], "date": "2026-12-05", "start_time": "16:00",
                                 "minutes_per_visit": 5}))["ok"] is False
+
+
+def test_search_cards_tell_the_agent_when_a_score_is_rough(db):
+    from homefinder.server.agent.prompts import SYSTEM_PROMPT
+    db.add(Listing(title="رقيق", score=53.1, score_breakdown={"total": 53.1, "contributions": [], "missing": [], "coverage": 0.06}))
+    db.commit()
+    c = json.loads(tools()["search_listings"].invoke({}))["cards"][0]
+    assert c["score_coverage"] == 0.06
+    assert "score_coverage" in SYSTEM_PROMPT and "تقريبي" in SYSTEM_PROMPT

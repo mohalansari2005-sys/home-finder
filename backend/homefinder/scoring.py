@@ -108,21 +108,32 @@ class ScoreResult:
     total: float | None
     contributions: list[dict] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
+    coverage: float | None = None  # share of the applicable weight backed by real data (0..1)
 
     def as_dict(self) -> dict:
         return asdict(self)
 
 
 def score(l, hard_filters: dict, weights: dict, targets: dict) -> ScoreResult:
+    """Weighted 0..100 score. A factor with no data counts as an average 0.5 (shrinkage), so a thin listing
+    lands near 50 instead of outranking a complete one; complete listings are unaffected and
+    sum(delta) == total - 50 still holds."""
     w = effective_weights(weights)
     vals = factor_values(l, hard_filters, targets)
-    present = {f: x for f, x in vals.items() if x is not None and w.get(f, 0) > 0}
-    missing = [f for f, x in vals.items() if x is None and w.get(f, 0) > 0]
-    total_w = sum(w[f] for f in present)
-    if total_w == 0:
-        return ScoreResult(None, [], missing)
-    total = 100 * sum(w[f] * x for f, x in present.items()) / total_w
-    contrib = [{"factor": f, "value": round(x, 3), "weight": w[f], "delta": round(100 * w[f] * (x - 0.5) / total_w, 1)}
+    t = effective_targets(targets)
+    not_applicable = set()  # these can never have a value, so they are not "missing data"
+    if not t["preferred_facings"]:
+        not_applicable.add("facing")
+    if not (hard_filters or {}).get("price_max"):
+        not_applicable.add("price")
+    applicable = [f for f in vals if w.get(f, 0) > 0 and f not in not_applicable]
+    present = {f: vals[f] for f in applicable if vals[f] is not None}
+    missing = [f for f in applicable if vals[f] is None]
+    w_app, w_pres = sum(w[f] for f in applicable), sum(w[f] for f in present)
+    if w_pres == 0:
+        return ScoreResult(None, [], missing, 0.0)
+    total = 100 * (sum(w[f] * x for f, x in present.items()) + 0.5 * (w_app - w_pres)) / w_app
+    contrib = [{"factor": f, "value": round(x, 3), "weight": w[f], "delta": round(100 * w[f] * (x - 0.5) / w_app, 1)}
                for f, x in present.items()]
     contrib.sort(key=lambda c: -c["delta"])
-    return ScoreResult(round(total, 1), contrib, missing)
+    return ScoreResult(round(total, 1), contrib, missing, round(w_pres / w_app, 2))

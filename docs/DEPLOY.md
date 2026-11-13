@@ -65,5 +65,6 @@ Open Settings and confirm the worker shows as متصل (online).
 - Logs: `docker compose -f deploy/docker-compose.yml logs -f api` on the server; `~/Library/Logs/homefinder/` on the Mac.
 - Restore a backup: `gunzip -c db-DATE.sql.gz | docker compose exec -T db psql -U hf homefinder`.
 - Resume a paused adapter (e.g. "aqar app-version outdated" after fixing the version): `UPDATE adapter_health SET status='ok', reason=NULL;` (Plan 2 adds a button).
+- After upgrading to the coverage-damped score (review fix I4), rescore once so stored scores use the new formula (run on the Mac against the server DB): `cd backend && .venv/bin/python -m homefinder.cli rescore`. A fresh install needs nothing.
 - Keep the Mac awake on power: System Settings, Battery, Options, "Prevent automatic sleeping on power adapter when the display is off".
 - Backups run nightly at 03:15 (DB, 14 kept) and weekly on Friday (photos, 4 kept); set `STORAGE_BOX` in `.env` for an off-box rsync copy.

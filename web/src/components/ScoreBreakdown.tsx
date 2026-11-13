@@ -35,6 +35,9 @@ export function ScoreBreakdown({ breakdown }: { breakdown: Breakdown | null }) {
   return (
     <section aria-labelledby="why-score" className="space-y-3 rounded-3xl bg-card p-4 ring-1 ring-foreground/10">
       <h2 id="why-score" className="text-[17px] font-semibold">لماذا <bdi>{formatNumber(Math.round(breakdown.total))}</bdi>؟</h2>
+      {breakdown.coverage != null && breakdown.coverage < 0.5 && (
+        <p className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">تقييم تقريبي: بيانات كثيرة غير مذكورة</p>
+      )}
       <Collapsible open={open} onOpenChange={setOpen} className="space-y-3">
         <ul className="space-y-2">
           {pluses.map((c) => <Reason key={c.factor} factor={c.factor} positive />)}

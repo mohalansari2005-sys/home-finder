@@ -19,7 +19,7 @@ export interface ListingDetail extends ListingCard {
   passes_filters: boolean; filter_reasons: string[]
 }
 export interface ScoreContribution { factor: string; value: number; weight: number; delta: number }
-export interface ScoreBreakdown { total: number | null; contributions: ScoreContribution[]; missing: string[] }
+export interface ScoreBreakdown { total: number | null; contributions: ScoreContribution[]; missing: string[]; coverage?: number }
 export interface FeedPage { items: ListingCard[]; next_offset: number | null }
 export interface MapPoint {
   id: number; lat: number; lng: number; price: number | null; score: number | null; family_status: FamilyStatus
