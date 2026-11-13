@@ -4,7 +4,7 @@ import imagehash
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from homefinder.models import Listing, ListingSource, Photo, Reaction
+from homefinder.models import Listing, ListingSource, Photo, Reaction, VisitStop
 
 RADIUS_M = 50
 AREA_TOL, PRICE_TOL, HASH_MAX = 0.05, 0.03, 8
@@ -66,7 +66,7 @@ def merge(s: Session, keep: Listing, dup: Listing) -> None:
             setattr(keep, f, getattr(dup, f))
     if STATUS_RANK.get(dup.family_status, 0) > STATUS_RANK.get(keep.family_status, 0):
         keep.family_status = dup.family_status
-    for model in (ListingSource, Reaction):
+    for model in (ListingSource, Reaction, VisitStop):  # trip stops follow the surviving listing
         s.execute(update(model).where(model.listing_id == dup.id).values(listing_id=keep.id))
     if not _hashes(s, keep.id):
         s.execute(update(Photo).where(Photo.listing_id == dup.id).values(listing_id=keep.id))

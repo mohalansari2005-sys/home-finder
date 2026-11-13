@@ -103,3 +103,17 @@ def test_merge_does_not_mix_price_histories(db):
     db.commit()
     dedupe_and_merge(db, new.id); db.commit()
     assert [p.price for p in db.query(PriceHistory).filter_by(listing_id=old.id)] == [2_000_000]
+
+
+def test_merge_repoints_visit_stops_to_the_surviving_listing(db):
+    """M11: a trip stop of the merged-away listing must show (and pre-check) the listing that is still active."""
+    from homefinder.models import VisitStop, VisitTrip
+    old = mk(db, phashes=[H1], sid="a1")
+    new = mk(db, lat=24.80020, phashes=[H1_NEAR], src="haraj", sid="h9")
+    trip = VisitTrip(title="t", date=__import__("datetime").date(2026, 11, 14), start_time=__import__("datetime").time(16, 0),
+                     origin_kind="home", origin_lat=24.7, origin_lng=46.6, minutes_per_visit=30)
+    db.add(trip); db.flush()
+    db.add(VisitStop(trip_id=trip.id, listing_id=new.id, position=0)); db.commit()
+    assert dedupe_and_merge(db, new.id) == old.id
+    db.commit()
+    assert db.query(VisitStop).one().listing_id == old.id
