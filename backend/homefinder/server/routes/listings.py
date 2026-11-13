@@ -84,6 +84,17 @@ def feed(view: Literal["all", "new", "bookmarked"] = "all", district: str | None
             "next_offset": offset + limit if more else None}
 
 
+def _detail(s: Session, l: Listing, photos: list[str], drop: dict | None) -> dict:
+    out = card(l, photos, drop) | {k: getattr(l, k) for k in DETAIL_FIELDS}
+    out["photos"] = photos
+    out["sources"] = [{"source": x.source, "url": x.url, "seller_phone": x.seller_phone, "seller_name": x.seller_name}
+                      for x in s.scalars(select(ListingSource).where(ListingSource.listing_id == l.id))]
+    out["price_history"] = [{"price": p.price, "observed_at": p.observed_at.isoformat()}
+                            for p in s.scalars(select(PriceHistory).where(PriceHistory.listing_id == l.id)
+                                               .order_by(PriceHistory.observed_at))]
+    return out
+
+
 @router.get("/listings/{listing_id}")
 def detail(listing_id: int, s: Session = Depends(get_db)):
     l = s.get(Listing, listing_id)
@@ -92,14 +103,23 @@ def detail(listing_id: int, s: Session = Depends(get_db)):
     if l.family_status == "new":
         l.family_status = "seen"
     photos = _photo_urls(s, [l.id]).get(l.id, [])
-    out = card(l, photos, _price_drops(s, [l.id]).get(l.id)) | {k: getattr(l, k) for k in DETAIL_FIELDS}
-    out["photos"] = photos
-    out["sources"] = [{"source": x.source, "url": x.url, "seller_phone": x.seller_phone, "seller_name": x.seller_name}
-                      for x in s.scalars(select(ListingSource).where(ListingSource.listing_id == l.id))]
-    out["price_history"] = [{"price": p.price, "observed_at": p.observed_at.isoformat()}
-                            for p in s.scalars(select(PriceHistory).where(PriceHistory.listing_id == l.id)
-                                               .order_by(PriceHistory.observed_at))]
-    return out
+    return _detail(s, l, photos, _price_drops(s, [l.id]).get(l.id))
+
+
+@router.get("/compare")
+def compare(ids: str = Query(...), s: Session = Depends(get_db)):
+    """2-4 listings in the requested order, as GET /listings/{id}. Unknown or merged ids are skipped; does not mark anything seen."""
+    try:
+        wanted = list(dict.fromkeys(int(x) for x in ids.split(",") if x.strip()))
+    except ValueError:
+        raise HTTPException(422, "ids must be comma-separated integers") from None
+    by_id = {l.id: l for l in s.scalars(select(Listing).where(Listing.id.in_(wanted), *visible()))}
+    rows = [by_id[i] for i in wanted if i in by_id]
+    if not 2 <= len(rows) <= 4:
+        raise HTTPException(422, "compare needs 2 to 4 valid listings")
+    found = [l.id for l in rows]
+    photos, drops = _photo_urls(s, found), _price_drops(s, found)
+    return [_detail(s, l, photos.get(l.id, []), drops.get(l.id)) for l in rows]
 
 
 class ReactBody(BaseModel):
