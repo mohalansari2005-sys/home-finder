@@ -62,9 +62,15 @@ def ingest_raw(s: Session, raw: RawListing) -> IngestResult:
         src.photo_urls = raw.photo_urls
     src.seller_phone = raw.seller_phone or src.seller_phone
     src.seller_name = raw.seller_name or src.seller_name
-    price_changed = bool(f.price and listing.price and f.price != listing.price)
+    # After a merge several sources feed one listing; only the primary (oldest) source drives price and its history,
+    # otherwise two sources quoting slightly different prices would flap it and fake price drops.
+    primary = s.scalar(select(func.min(ListingSource.id)).where(ListingSource.listing_id == listing.id)) == src.id
+    follow_price = primary or listing.price is None
+    price_changed = bool(follow_price and f.price and listing.price and f.price != listing.price)
     for k in LISTING_FIELDS:
         v = getattr(f, k)
+        if k == "price" and not follow_price:
+            continue
         if v is not None:
             setattr(listing, k, v)
     if price_changed:

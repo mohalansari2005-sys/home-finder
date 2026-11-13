@@ -66,3 +66,29 @@ def test_enrich_budget_exceeded_keeps_partial_and_requeues(db):
     out = enrich_listing(_deps(llm=FakeLLM(exc=BudgetExceeded("cap"))), l.id)
     assert out["requeued"] is True
     assert db.query(Job).filter(Job.dedupe_key == f"enrich-retry:{l.id}").count() == 1
+
+
+def test_enrich_merges_duplicates_and_rescores_survivor(db):
+    from geoalchemy2.elements import WKTElement
+    from homefinder.models import PriceHistory
+
+    def mk(lat, src, sid):
+        l = Listing(lat=lat, lng=46.6, geom=WKTElement(f"POINT(46.6 {lat})", srid=4326), geo_precision="exact", price=2_000_000,
+                    built_area_m2=400, land_area_m2=300, property_type="villa")
+        db.add(l); db.flush()
+        db.add(ListingSource(listing_id=l.id, source=src, source_id=sid, url="u", raw={}))
+        return l
+    old, new = mk(24.8, "aqar", "1"), mk(24.8002, "haraj", "2")
+    db.commit()
+    out = enrich_listing(_deps(google=FakeGoogle()), new.id)
+    db.expire_all()
+    assert out["merged_into"] == old.id and db.get(Listing, new.id).merged_into_id == old.id
+    assert db.get(Listing, old.id).score is not None
+
+
+def test_enrich_dedupe_failure_does_not_fail_the_job(db, monkeypatch):
+    from homefinder.worker.enrich import pipeline
+    monkeypatch.setattr(pipeline, "dedupe_and_merge", lambda s, i: (_ for _ in ()).throw(ValueError("bad phash")))
+    l = Listing(title="فيلا", description="x"); db.add(l); db.commit()
+    out = enrich_listing(_deps(google=FakeGoogle()), l.id)
+    assert "merged_into" not in out
