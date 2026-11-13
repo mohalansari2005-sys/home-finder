@@ -1,3 +1,5 @@
+import { Briefcase, GraduationCap, Plane, School, type LucideIcon } from 'lucide-react'
+
 // All number/date formatting goes through here (see docs/arabic-ui-rules.md).
 // Never call Intl with bare 'ar' / 'ar-SA': digits, percent sign and calendar vary by runtime.
 const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
@@ -18,6 +20,8 @@ export function toDate(s: string): Date | null {
   return date
 }
 export const formatDate = (d: Date) => df.format(d)
+const dtf = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh' })
+export const formatDateTime = (d: Date) => dtf.format(d)
 
 export interface PluralForms { zero: string; one: string; two: string; few: string; many: string; other: string }
 
@@ -45,11 +49,11 @@ export function formatYears(n: number | null | undefined): string {
 }
 
 export const PROPERTY_TYPE_AR: Record<string, string> = { villa: 'فيلا', apartment: 'شقة', floor: 'دور', house: 'بيت' }
-export const COMMUTE_ICONS: { kind: 'school' | 'work' | 'university' | 'airport'; icon: string; label: string }[] = [
-  { kind: 'school', icon: '🏫', label: 'المدرسة' },
-  { kind: 'work', icon: '💼', label: 'العمل' },
-  { kind: 'university', icon: '🎓', label: 'الجامعة' },
-  { kind: 'airport', icon: '✈️', label: 'المطار' },
+export const COMMUTE_ICONS: { kind: 'school' | 'work' | 'university' | 'airport'; Icon: LucideIcon; label: string }[] = [
+  { kind: 'school', Icon: School, label: 'المدرسة' },
+  { kind: 'work', Icon: Briefcase, label: 'العمل' },
+  { kind: 'university', Icon: GraduationCap, label: 'الجامعة' },
+  { kind: 'airport', Icon: Plane, label: 'المطار' },
 ]
 export const FACING_AR: Record<string, string> = {
   north: 'شمال', south: 'جنوب', east: 'شرق', west: 'غرب',

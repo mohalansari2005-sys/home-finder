@@ -22,4 +22,4 @@ Adapted from the generic RTL and Arabic-copy guidance in the owner's local skill
 - In empty states, prefer a sentence over a «0 …» count.
 - **Buttons use the verbal noun** (gender-neutral): «حفظ», «استبعاد», «إضافة», «إنشاء الرحلة», «مقارنة». Not imperatives like «احفظ» or «أضف».
 - Watch hamzas: إضافة، إلغاء، أسعار، إدارة (not اضافة/الغاء/اسعار/ادارة).
-- **Typed symbols** (`✓ ✕ → ← ↓ ↗ ★ ²`) may be missing from the Arabic font and render in a fallback face. Prefer small inline SVG icons for UI controls. Emoji used as decorative icons (🏫 💼 🎓 ✈️) are acceptable.
+- **Typed symbols** (`✓ ✕ → ← ↓ ↗ ★ ²`) may be missing from the Arabic font and render in a fallback face. Use lucide-react icons for every icon (see `docs/design-system.md`). No emoji as icons.

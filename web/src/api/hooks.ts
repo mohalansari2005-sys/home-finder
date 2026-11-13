@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { api } from './client'
 import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, ReactKind, SystemStatus } from './types'
 
@@ -31,10 +32,28 @@ export function useReact() {
       api<{ family_status: string }>(`/api/listings/${v.id}/react`, {
         method: 'POST', body: JSON.stringify({ kind: v.kind, reason_code: v.reason_code, note: v.note }),
       }),
-    onSuccess: () => {
+    onMutate: async (v) => {
+      if (v.kind !== 'reject') return
+      await qc.cancelQueries({ queryKey: ['feed'] })
+      // optimistic removal from every cached feed page
+      qc.setQueriesData<{ pages: FeedPage[]; pageParams: unknown[] }>({ queryKey: ['feed'] }, (old) =>
+        old && { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.filter((i) => i.id !== v.id) })) })
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['map'] })
       qc.invalidateQueries({ queryKey: ['listing'] })
     },
   })
+}
+
+/** React to a listing; rejecting shows a toast with undo (better than a confirm dialog). */
+export function useReactWithUndo() {
+  const react = useReact()
+  return (id: number, kind: ReactKind) => {
+    react.mutate({ id, kind })
+    if (kind === 'reject') {
+      toast('تم الاستبعاد', { duration: 5000, action: { label: 'تراجع', onClick: () => react.mutate({ id, kind: 'unreject' }) } })
+    }
+  }
 }
