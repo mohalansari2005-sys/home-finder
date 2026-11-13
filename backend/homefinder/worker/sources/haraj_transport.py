@@ -145,6 +145,7 @@ class FallbackHaraj:
                 self._t.close()
                 self._t = None
                 if self._i + 1 >= len(self._factories):
+                    self._i = 0  # everything blocked: the next run starts with the first transport again
                     raise
                 self._i += 1
 

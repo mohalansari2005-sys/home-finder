@@ -127,6 +127,11 @@ class HarajAdapter:
         self._t = transport
         self._pacer = pacer or Pacer()
 
+    def close(self) -> None:
+        close = getattr(self._t, "close", None)
+        if close:
+            close()
+
     def _tags(self, ptype: str, q: SearchQuery) -> list[str]:
         base = HARAJ_TAG_BY_TYPE[ptype]
         if not q.districts:
@@ -140,9 +145,11 @@ class HarajAdapter:
             for tag in self._tags(ptype, q):
                 for page in range(q.max_pages):
                     self._pacer.wait()
-                    posts = extract_posts(self._t.search(tag, q.city, page))
+                    resp = self._t.search(tag, q.city, page)
+                    posts = extract_posts(resp)
                     if not posts:
                         break
+                    last_page = ((((resp or {}).get("data") or {}).get("posts") or {}).get("pageInfo") or {}).get("hasNextPage") is False
                     for p in posts:
                         r = parse_post(p)
                         if r is None or r.source_id in seen:
@@ -156,6 +163,8 @@ class HarajAdapter:
                             continue
                         seen.add(r.source_id)
                         yield r
+                    if last_page:
+                        break
 
     def fetch(self, source_id: str) -> RawListing | None:
         self._pacer.wait()

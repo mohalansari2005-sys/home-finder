@@ -86,6 +86,11 @@ class AqarAdapter:
         self._pacer = pacer or Pacer()
         self._district_cache: dict[tuple[int, int], dict[str, int]] = {}
 
+    def close(self) -> None:
+        close = getattr(self._t, "close", None)
+        if close:
+            close()
+
     def _post(self, body: dict) -> dict:
         self._pacer.wait()
         resp = self._t.post_graphql(body)  # raises AppVersionOutdated / Blocked

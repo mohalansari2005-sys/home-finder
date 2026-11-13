@@ -14,7 +14,7 @@ from homefinder.schemas import SearchQuery
 from homefinder.worker.enrich.commute import compute_commutes
 from homefinder.worker.enrich.pipeline import enrich_listing
 from homefinder.worker.ingest import ingest_raw
-from homefinder.worker.sources.aqar_transport import AppVersionOutdated
+from homefinder.worker.sources.aqar_transport import AppVersionOutdated, Blocked
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def handle_scrape_search(deps: WorkerDeps, payload: dict) -> dict:
             query = SearchQuery.from_hard_filters(prefs.get_or_create(s).hard_filters)
     else:
         query = SearchQuery(**payload.get("query", {}))
-    adapter = deps.adapters[source]()
+    adapter = deps.adapters[source]()  # a process-lifetime singleton: its pacer and session persist across jobs
     try:
         raws = list(adapter.search(query))
     except AppVersionOutdated as e:
@@ -47,10 +47,11 @@ def handle_scrape_search(deps: WorkerDeps, payload: dict) -> dict:
         with deps.session_factory() as s:
             adapters_state.pause(s, source, f"{source} app-version outdated")
         return {"skipped": "app_version_outdated"}
-    finally:
-        close = getattr(getattr(adapter, "_t", None), "close", None)
-        if close:
-            close()
+    except Blocked as e:  # every transport (curl_cffi, then Playwright) was refused: stop hammering the site
+        log.error("%s blocked: %s", source, e)
+        with deps.session_factory() as s:
+            adapters_state.pause(s, source, f"{source} blocked: {e}"[:200])
+        return {"skipped": "blocked"}
     report = adapter.health(raws)
     if not report.ok:
         with deps.session_factory() as s:
@@ -108,10 +109,11 @@ def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
             with deps.session_factory() as s:
                 adapters_state.pause(s, src, f"{src} app-version outdated")
             return {"skipped": "app_version_outdated"}
-        finally:
-            close = getattr(getattr(adapter, "_t", None), "close", None)
-            if close:
-                close()
+        except Blocked as e:
+            log.error("%s blocked: %s", src, e)
+            with deps.session_factory() as s:
+                adapters_state.pause(s, src, f"{src} blocked: {e}"[:200])
+            return {"skipped": "blocked"}
         if raw is not None:
             with deps.session_factory() as s:
                 res = ingest_raw(s, raw)

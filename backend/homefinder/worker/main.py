@@ -59,9 +59,11 @@ def run_loop(deps, client, *, stop: Callable[[], bool], sleep=time.sleep, poll_i
 
 def build_deps(client: WorkerClient) -> WorkerDeps:
     http = httpx.Client(timeout=30, headers={"user-agent": "Mozilla/5.0 (Macintosh) HomeFinder/0.1"})
+    # One adapter per source for the whole process: a single Pacer and HTTP session, so the 2-3 s gap holds
+    # between jobs too (transports are created lazily, so building them here costs nothing).
+    aqar, haraj = AqarAdapter(make_default_transport()), HarajAdapter(make_haraj_transport())
     return WorkerDeps(session_factory=session_scope,
-                      adapters={"aqar": lambda: AqarAdapter(make_default_transport()),
-                                "haraj": lambda: HarajAdapter(make_haraj_transport())},
+                      adapters={"aqar": lambda: aqar, "haraj": lambda: haraj},
                       llm=make_llm(), google=make_google(http), photo_sink=client, http=http)
 
 
@@ -69,8 +71,13 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     st = get_settings()
     client = WorkerClient(st.server_url, st.worker_token)
-    run_loop(build_deps(client), client, stop=lambda: False, interval_hours=st.scrape_interval_hours,
-             hostname=socket.gethostname())
+    deps = build_deps(client)
+    try:
+        run_loop(deps, client, stop=lambda: False, interval_hours=st.scrape_interval_hours,
+                 hostname=socket.gethostname())
+    finally:
+        for make in deps.adapters.values():
+            make().close()
 
 
 if __name__ == "__main__":
