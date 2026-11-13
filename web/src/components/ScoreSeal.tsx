@@ -9,12 +9,12 @@ const RING: Record<'high' | 'mid' | 'low', string> = {
 }
 
 /** The fit score as a sand medallion with the number in Kufi and a ring segment showing the tier. */
-export function ScoreSeal({ score, size = 'md', className }: { score: number | null; size?: 'md' | 'lg'; className?: string }) {
+export function ScoreSeal({ score, size = 'md', className }: { score: number | null; size?: 'sm' | 'md' | 'lg'; className?: string }) {
   if (score == null) return null
   const v = Math.max(0, Math.min(100, Math.round(score)))
   const r = 20
   const c = 2 * Math.PI * r
-  const dim = size === 'lg' ? 'size-16 text-2xl' : 'size-11 text-base'
+  const dim = size === 'lg' ? 'size-16 text-2xl' : size === 'sm' ? 'size-8 text-sm' : 'size-11 text-base'
   return (
     <span role="img" aria-label={`درجة الملاءمة ${v}`}
           className={cn('relative inline-flex items-center justify-center rounded-full bg-seal font-display font-bold text-seal-foreground shadow-sm', dim, className)}>

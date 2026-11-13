@@ -19,7 +19,7 @@ export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
                selected ? 'border-primary' : 'border-transparent')}>
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
         {l.photo_url
-          ? <img src={l.photo_url} alt="" loading="lazy" width={640} height={480} className="size-full object-cover" />
+          ? <img src={l.photo_url} alt="" loading="lazy" width={640} height={480} className={cn('size-full object-cover', l.status === 'removed' && 'grayscale')} />
           : <div className="flex size-full items-center justify-center text-muted-foreground"><House className="size-6" strokeWidth={1.75} aria-hidden /></div>}
         <ScoreSeal score={l.score} className="absolute start-2 top-2" />
         <div className="absolute end-2 top-2 flex flex-col items-end gap-1.5">
@@ -30,7 +30,7 @@ export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
               انخفض <bdi>{formatNumber(l.price_drop.from - l.price_drop.to)}</bdi> ر.س
             </Badge>
           )}
-          {l.status === 'removed' && <Badge variant="secondary" className="bg-muted text-muted-foreground">الإعلان محذوف</Badge>}
+          {l.status === 'removed' && <Badge variant="secondary" className="h-6 border-border bg-card px-2.5 text-sm text-muted-foreground">الإعلان محذوف</Badge>}
         </div>
       </div>
       <div className="space-y-2 px-1">

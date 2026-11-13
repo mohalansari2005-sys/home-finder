@@ -10,7 +10,22 @@ const WEIGHTS = { commute_school: 1, commute_work: 1, commute_university: 0.6, c
   land_area: 0.4, building_age: 0.6, street_width: 0.5, facing: 0.2, street_count: 0.2, deed_type: 0.3, bedrooms: 0.4,
   bathrooms: 0.3, maid_room: 0.3, driver_room: 0.2, yard: 0.3, elevator: 0.2 }
 
-export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?: unknown; paused?: boolean } = {}) {
+const sse = (events: object[]) => events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('')
+const BUDGET = 'تم الوصول إلى الحد الشهري لاستخدام المساعد'
+
+/** Scripted assistant replies, keyed by what the test types (events follow docs m3-contract: thread first, done last). */
+export function chatEvents(message: string): object[] {
+  if (message.includes('حد')) return [{ type: 'thread', thread_id: 't-budget' }, { type: 'error', message: BUDGET }, { type: 'done' }]
+  if (message.includes('الميزانية')) {
+    return [{ type: 'thread', thread_id: 't-prefs' }, { type: 'tool', name: 'update_preferences' }, { type: 'prefs_changed' },
+      { type: 'token', text: 'حدّثت ' }, { type: 'token', text: 'الميزانية.' }, { type: 'done' }]
+  }
+  return [{ type: 'thread', thread_id: 't-1' }, { type: 'tool', name: 'search_listings' },
+    { type: 'listings', items: [card(1, { price_drop: { from: 1_600_000, to: 1_500_001, at: '2026-11-10T00:00:00Z' } }), card(2, { district: 'الياسمين', score: 81 })] },
+    { type: 'token', text: 'وجدت ' }, { type: 'token', text: 'فيلتين مناسبتين.' }, { type: 'done' }]
+}
+
+export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?: unknown; paused?: boolean; chatNoKey?: boolean; chatDropFirst?: boolean; cardExtras?: Record<number, Record<string, unknown>> } = {}) {
   let loggedIn = opts.loggedIn ?? false
   const statuses = new Map<number, string>()
   const prefs = {
@@ -21,6 +36,7 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
   }
   let places: unknown[] = []
   let adapterPaused = !!opts.paused
+  let chatCalls = 0
   const changes: unknown[] = []
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
@@ -33,8 +49,15 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
     }
     if (!loggedIn) return json({ detail: 'login required' }, 401)
     if (url.pathname === '/api/me') return json({ ok: true })
+    if (url.pathname === '/api/chat' && m === 'POST') {
+      if (opts.chatNoKey) return json({ detail: 'assistant not configured' }, 503)
+      if (opts.chatDropFirst && chatCalls++ === 0) return route.abort('failed')
+      const message = JSON.parse(route.request().postData() ?? '{}').message as string
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', headers: { 'cache-control': 'no-cache' }, body: sse(chatEvents(message)) })
+    }
+    if (url.pathname === '/api/chat/threads') return json([])
     if (url.pathname === '/api/feed') {
-      const items = [card(1), card(2)].map((c) => ({ ...c, family_status: statuses.get(c.id) ?? c.family_status }))
+      const items = [card(1, opts.cardExtras?.[1]), card(2, opts.cardExtras?.[2])].map((c) => ({ ...c, family_status: statuses.get(c.id) ?? c.family_status }))
         .filter((c) => c.family_status !== 'rejected')
       return json({ items, next_offset: null })
     }
