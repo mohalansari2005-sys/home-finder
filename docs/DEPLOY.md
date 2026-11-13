@@ -14,7 +14,12 @@ One Hetzner VPS (2 GB) runs Postgres+PostGIS, the API and nginx. The Mac runs th
 scp deploy/scripts/server-setup.sh root@IP:
 ssh root@IP 'DOMAIN=your.domain EMAIL=you@example.com bash server-setup.sh'
 ```
-Record the Tailscale IP it prints.
+Record the Tailscale IP it prints. The script also runs `deploy/scripts/server-hardening.sh` (docker starts after tailscaled, so the Postgres port bound to the Tailscale IP survives a reboot, and `/var/backups/homefinder` is root-only).
+
+**A server that was set up before this fix** does not need a full re-run. Pull the repo and run only the hardening step once:
+```bash
+ssh root@IP 'cd /opt/homefinder && git pull --ff-only && bash deploy/scripts/server-hardening.sh'
+```
 
 ## 3. Server `.env`
 Copy `.env.example` to `/opt/homefinder/.env` and fill in:
@@ -34,6 +39,8 @@ Never commit `.env`.
 ```bash
 HF_SERVER=root@IP deploy/scripts/deploy.sh
 ```
+
+After the first deploy, **reboot the VPS once** (`ssh root@IP reboot`) and confirm the site loads, `docker compose -f deploy/docker-compose.yml ps` shows db, api and nginx up, and the worker shows متصل again. This proves the boot order.
 
 ## 5. Mac `backend/.env`
 ```

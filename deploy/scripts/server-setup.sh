@@ -24,6 +24,8 @@ ufw --force enable
 mkdir -p /opt/homefinder /var/backups/homefinder
 [ -d /opt/homefinder/.git ] || git clone https://github.com/mohalansari2005-sys/home-finder.git /opt/homefinder
 
+bash /opt/homefinder/deploy/scripts/server-hardening.sh  # docker after tailscaled, nonlocal bind, private backups dir
+
 certbot certonly --standalone --non-interactive --agree-tos -m "$EMAIL" -d "$DOMAIN"
 
 cat > /etc/cron.d/homefinder <<CRON

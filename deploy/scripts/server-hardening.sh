@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Boot-order and permission fixes for the VPS. Called by server-setup.sh and safe to re-run on a server
+# that was set up earlier:  scp deploy/scripts/server-hardening.sh root@IP: && ssh root@IP bash server-hardening.sh
+#
+# Postgres is published on the Tailscale IP (docker-compose.yml). At boot dockerd can start before tailscaled has
+# assigned that address; binding to a missing address fails and Docker does not retry, so the db (and the site)
+# stay down. Two guards: bind to non-local addresses, and start docker after tailscaled.
+# PREFIX (default empty) is only for testing the generated files in a scratch directory.
+set -euo pipefail
+P="${PREFIX:-}"
+
+install -d "$P/etc/sysctl.d" "$P/etc/systemd/system/docker.service.d" "$P/var/backups/homefinder"
+echo 'net.ipv4.ip_nonlocal_bind=1' > "$P/etc/sysctl.d/99-homefinder.conf"
+printf '[Unit]\nAfter=tailscaled.service\nWants=tailscaled.service\n' > "$P/etc/systemd/system/docker.service.d/10-tailscale.conf"
+chmod 700 "$P/var/backups/homefinder"  # dumps hold seller phones and the home location
+
+if [ -z "$P" ]; then
+  sysctl --system >/dev/null
+  systemctl daemon-reload
+fi
+echo "hardening applied (docker now starts after tailscaled; backups dir is root-only)"
