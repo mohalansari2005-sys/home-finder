@@ -8,6 +8,8 @@ import { MapPage } from './pages/MapPage'
 import { ComparePage } from './pages/ComparePage'
 import { ListingPage } from './pages/ListingPage'
 import { AssistantPage } from './pages/AssistantPage'
+import { VisitsPage } from './pages/VisitsPage'
+import { TripPage } from './pages/TripPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -27,6 +29,8 @@ export default function App() {
       <Route path="/listing/:id" element={<Protected><ListingPage /></Protected>} />
       <Route path="/compare" element={<Protected><ComparePage /></Protected>} />
       <Route path="/assistant" element={<Protected><AssistantPage /></Protected>} />
+      <Route path="/visits" element={<Protected><VisitsPage /></Protected>} />
+      <Route path="/visits/:id" element={<Protected><TripPage /></Protected>} />
       <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

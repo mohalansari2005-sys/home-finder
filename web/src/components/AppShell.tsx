@@ -33,7 +33,7 @@ function SideNav({ toggle }: { toggle: boolean }) {
         <SidebarMenu className="gap-1 p-2">
           {NAV_ITEMS.map(({ to, label, Icon }) => (
             <SidebarMenuItem key={to}>
-              <NavLink to={to} end={to === '/'}>
+              <NavLink to={to} end={to === '/'} aria-label={label}>
                 {({ isActive }) => (
                   <SidebarMenuButton asChild isActive={isActive} tooltip={label} size="lg" className="h-11 text-base">
                     <span><Icon strokeWidth={1.75} className="size-5" aria-hidden /><span className="group-data-[collapsible=icon]:hidden">{label}</span></span>

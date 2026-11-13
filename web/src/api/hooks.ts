@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { api } from './client'
-import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, PreferenceChange, PreferencePatch, Preferences, ReactExtra, ReactKind, Suggestion, SystemStatus } from './types'
+import { ApiError, api } from './client'
+import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, PreferenceChange, PreferencePatch, Preferences, ReactExtra, ReactKind, StopPatch, Suggestion, SystemStatus, Trip, TripCreate, TripStatus, VisitGroups } from './types'
 
 export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => api<{ ok: boolean }>('/api/me'), retry: false })
 
@@ -121,3 +121,58 @@ export const useCompare = (ids: number[]) =>
     queryFn: () => api<ListingDetail[]>(`/api/compare?ids=${ids.join(',')}`),
     enabled: ids.length >= 2,
   })
+
+// ---- visits (M5) ----
+export const useVisitGroups = () => useQuery({ queryKey: ['visit-groups'], queryFn: () => api<VisitGroups>('/api/visits/groups') })
+export const useTrips = () => useQuery({ queryKey: ['trips'], queryFn: () => api<Trip[]>('/api/visits/trips?status=all') })
+
+/** The server runs the listing re-check in the background; poll every 30 s while it reports precheck_pending. */
+export const PRECHECK_POLL_MS = 30_000
+export const useTrip = (id: number | null) =>
+  useQuery({
+    queryKey: ['trip', id],
+    queryFn: () => api<Trip>(`/api/visits/trips/${id}`),
+    enabled: id != null,
+    refetchInterval: (q) => (q.state.data?.warnings.includes('precheck_pending') ? PRECHECK_POLL_MS : false),
+  })
+
+function useTripWrite<V>(id: number, fn: (v: V) => Promise<Trip | void>, invalidateOnly = false) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (out) => {
+      if (out && !invalidateOnly) qc.setQueryData(['trip', id], out)
+      else qc.invalidateQueries({ queryKey: ['trip', id] })
+      qc.invalidateQueries({ queryKey: ['trips'] })
+    },
+  })
+}
+
+export function useCreateTrip() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: TripCreate) => api<Trip>('/api/visits/trips', { method: 'POST', body: JSON.stringify(b) }),
+    onSuccess: (t) => {
+      qc.setQueryData(['trip', t.id], t)
+      qc.invalidateQueries({ queryKey: ['trips'] })
+    },
+  })
+}
+export const usePatchStop = (tripId: number) =>
+  useTripWrite(tripId, (v: { stopId: number; patch: StopPatch }) =>
+    api<Trip>(`/api/visits/stops/${v.stopId}`, { method: 'PATCH', body: JSON.stringify(v.patch) }))
+export const useReplanTrip = (tripId: number) =>
+  useTripWrite(tripId, () => api<Trip>(`/api/visits/trips/${tripId}/replan`, { method: 'POST' }))
+export const usePatchTripStatus = (tripId: number) =>
+  useTripWrite(tripId, (status: TripStatus) => api<Trip>(`/api/visits/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify({ status }) }))
+export const usePrecheckTrip = (tripId: number) =>
+  useTripWrite(tripId, () => api<void>(`/api/visits/trips/${tripId}/precheck`, { method: 'POST' }), true)
+
+/** multipart upload: the browser sets the content-type boundary, so this bypasses the JSON `api()` helper. */
+export const useUploadStopPhoto = (tripId: number) =>
+  useTripWrite(tripId, async (v: { stopId: number; file: File }) => {
+    const body = new FormData()
+    body.append('file', v.file)
+    const r = await fetch(`/api/visits/stops/${v.stopId}/photos`, { method: 'POST', body, credentials: 'include' })
+    if (!r.ok) throw new ApiError(r.status, await r.text())
+  }, true)

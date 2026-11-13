@@ -17,7 +17,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!r.ok) throw new ApiError(r.status, await r.text())
   if (r.status === 204) return undefined as T
-  return r.json() as Promise<T>
+  // 202 Accepted and friends may carry no body
+  const text = await r.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 /** Pull a readable cause out of an ApiError body (FastAPI sends {"detail": string | [{msg}]}). */

@@ -25,6 +25,22 @@ export const formatDate = (d: Date) => df.format(d)
 const dtf = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh' })
 export const formatDateTime = (d: Date) => dtf.format(d)
 
+const tdf = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })
+/** "YYYY-MM-DD" -> "السبت، 14 نوفمبر". Invalid input -> ''. */
+export function formatTripDate(s: string): string {
+  const d = toDate(s)
+  return d ? tdf.format(d) : ''
+}
+
+/** "16:10" -> { time: '4:10', period: 'م' }. Never show the raw 24-hour string; wrap `time` in <bdi>. */
+export function formatClock(hhmm: string | null | undefined): { time: string; period: 'ص' | 'م' } | null {
+  const m = hhmm ? /^(\d{1,2}):(\d{2})/.exec(hhmm) : null
+  if (!m) return null
+  const h = Number(m[1])
+  if (h > 23 || Number(m[2]) > 59) return null
+  return { time: `${h % 12 || 12}:${m[2]}`, period: h >= 12 ? 'م' : 'ص' }
+}
+
 export interface PluralForms { zero: string; one: string; two: string; few: string; many: string; other: string }
 
 /** CLDR Arabic plural categories: 0 / 1 / 2 / n%100 in 3-10 / n%100 in 11-99 / other. */

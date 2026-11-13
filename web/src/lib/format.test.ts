@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatYears, pluralAr, PLACE_LABEL_AR, toDate } from './format'
+import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatClock, formatTripDate, formatYears, pluralAr, PLACE_LABEL_AR, toDate } from './format'
 
 describe('format', () => {
   it('formats price with western digits and riyal suffix', () => {
@@ -86,5 +86,23 @@ describe('PLACE_LABEL_AR', () => {
     expect(PLACE_LABEL_AR.home).toBe('المنزل الحالي')
     expect(PLACE_LABEL_AR.school).toBe('المدرسة')
     expect(Object.keys(PLACE_LABEL_AR).sort()).toEqual(['airport', 'home', 'school', 'university', 'work'])
+  })
+})
+
+describe('formatClock', () => {
+  it('turns 24h strings into a 12-hour number island plus an Arabic period', () => {
+    expect(formatClock('16:10')).toEqual({ time: '4:10', period: 'م' })
+    expect(formatClock('09:05')).toEqual({ time: '9:05', period: 'ص' })
+    expect(formatClock('00:30')).toEqual({ time: '12:30', period: 'ص' })
+    expect(formatClock('12:00')).toEqual({ time: '12:00', period: 'م' })
+    expect(formatClock(null)).toBeNull()
+    expect(formatClock('bad')).toBeNull()
+  })
+})
+
+describe('formatTripDate', () => {
+  it('shows weekday and Gregorian date with Western digits', () => {
+    expect(formatTripDate('2026-11-14')).toBe('السبت، 14 نوفمبر')
+    expect(formatTripDate('nope')).toBe('')
   })
 })
