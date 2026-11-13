@@ -26,6 +26,8 @@ Copy `.env.example` to `/opt/homefinder/.env` and fill in:
 - `DOMAIN`, `TAILSCALE_IP`
 - `GOOGLE_API_KEY` (server key), `OPENAI_API_KEY`, and the monthly caps
 
+With `COOKIE_SECURE=true` the api **refuses to start** (and the container restarts in a loop; see `docker compose logs api`) if `SESSION_SECRET` or `WORKER_TOKEN` is a placeholder (`CHANGE_ME…`, the dev defaults) or shorter than 32 characters, or if `FAMILY_PASSWORD_HASH` is empty.
+
 Never commit `.env`.
 
 ## 4. First deploy (from the Mac)

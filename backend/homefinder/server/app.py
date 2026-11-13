@@ -24,8 +24,27 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_PLACEHOLDERS = ("dev-only-change-me", "dev-worker-token")
+
+
+def _weak(v: str) -> bool:
+    return not v or v.startswith("CHANGE_ME") or v in _PLACEHOLDERS or len(v) < 32
+
+
+def check_production_secrets(st) -> None:
+    """The repo is public: a default or example secret would let anyone forge a family session."""
+    bad = [name for name, v in (("SESSION_SECRET", st.session_secret), ("WORKER_TOKEN", st.worker_token)) if _weak(v)]
+    if not st.family_password_hash:
+        bad.append("FAMILY_PASSWORD_HASH")
+    if bad:
+        raise RuntimeError("refusing to start: set a real " + ", ".join(bad)
+                           + " in .env (SESSION_SECRET and WORKER_TOKEN need at least 32 random characters)")
+
+
 def create_app() -> FastAPI:
     st = get_settings()
+    if st.cookie_secure:  # production
+        check_production_secrets(st)
     app = FastAPI(title="Home Finder", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.add_middleware(SessionMiddleware, secret_key=st.session_secret, session_cookie="hf_session",
                        max_age=90 * 24 * 3600, same_site="lax", https_only=st.cookie_secure)
