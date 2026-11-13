@@ -74,7 +74,7 @@ Plain code runs before the model where possible: Haraj prices and areas are pars
 | `request_scrape` | queue a fresh scrape when results are thin |
 | `get_filter_suggestions`, `apply_filter_suggestion` | show or apply the learner's suggestions |
 
-M5 adds two visit-planning tools. The system prompt is in Arabic and sets the ground rules:
+Two more tools, `suggest_visit_trip` and `create_visit_trip`, plan visits. The system prompt is in Arabic and sets the ground rules:
 - Speak Arabic.
 - Never make up listings, prices or distances.
 - Say "not mentioned" for missing values.
@@ -156,7 +156,7 @@ bash scripts/check-rtl.sh
 | M2 Scoring | explainable score, hard filters, settings | merged |
 | M3 Assistant | chat, Haraj, duplicate merge, removed listings, price drops | merged |
 | M4 Learning | learning from reactions, suggestions, compare | merged |
-| M5 Visits | district trips, contact tracking, pre-visit checks | planned |
+| M5 Visits | district trips, contact tracking, pre-visit checks | merged |
 
 ## Privacy
 
