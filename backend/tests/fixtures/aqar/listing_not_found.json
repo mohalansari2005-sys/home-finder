@@ -1,0 +1,23 @@
+{
+ "errors": [
+  {
+   "code": "Listing not found",
+   "message": "",
+   "locations": [
+    {
+     "line": 3,
+     "column": 9
+    }
+   ],
+   "path": [
+    "Web",
+    "listing"
+   ]
+  }
+ ],
+ "data": {
+  "Web": {
+   "listing": null
+  }
+ }
+}

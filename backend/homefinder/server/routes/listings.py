@@ -1,8 +1,9 @@
+from datetime import timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from homefinder.models import Listing, ListingSource, Photo, PriceHistory, Reaction
@@ -25,13 +26,33 @@ def _photo_urls(s: Session, ids: list[int]) -> dict[int, list[str]]:
     return out
 
 
-def card(l: Listing, photos: list[str] | None) -> dict:
+DROP_WINDOW = timedelta(days=30)
+
+
+def _price_drops(s: Session, ids: list[int]) -> dict[int, dict]:
+    """{listing_id: {"from", "to", "at"}} when the latest price entry is lower than the previous one and <= 30 days old."""
+    if not ids:
+        return {}
+    rows = s.execute(select(PriceHistory.listing_id, PriceHistory.price, PriceHistory.observed_at)
+                     .where(PriceHistory.listing_id.in_(ids))
+                     .order_by(PriceHistory.listing_id, PriceHistory.observed_at.desc(), PriceHistory.id.desc())).all()
+    latest_two: dict[int, list] = {}
+    for lid, price, at in rows:
+        if len(latest_two.setdefault(lid, [])) < 2:
+            latest_two[lid].append((price, at))
+    cutoff = s.scalar(select(func.now())) - DROP_WINDOW
+    return {lid: {"from": prev[0], "to": last[0], "at": last[1].isoformat()}
+            for lid, (last, prev) in ((k, v) for k, v in latest_two.items() if len(v) == 2)
+            if last[0] < prev[0] and last[1] >= cutoff}
+
+
+def card(l: Listing, photos: list[str] | None, drop: dict | None = None) -> dict:
     return {"id": l.id, "title": l.title, "property_type": l.property_type, "price": l.price, "district": l.district,
             "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "built_area_m2": l.built_area_m2,
             "land_area_m2": l.land_area_m2, "photo_url": (photos or [None])[0], "score": l.score,
             "commutes": l.commutes or {}, "family_status": l.family_status,
-            "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
-            "price_drop": None}
+            "status": l.status, "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
+            "price_drop": drop}
 
 
 def visible():
@@ -55,8 +76,10 @@ def feed(view: Literal["all", "new", "bookmarked"] = "all", district: str | None
     rows = list(s.scalars(q.offset(offset).limit(limit + 1)))
     more = len(rows) > limit
     rows = rows[:limit]
-    photos = _photo_urls(s, [l.id for l in rows])
-    return {"items": [card(l, photos.get(l.id)) for l in rows], "next_offset": offset + limit if more else None}
+    ids = [l.id for l in rows]
+    photos, drops = _photo_urls(s, ids), _price_drops(s, ids)
+    return {"items": [card(l, photos.get(l.id), drops.get(l.id)) for l in rows],
+            "next_offset": offset + limit if more else None}
 
 
 @router.get("/listings/{listing_id}")
@@ -67,7 +90,7 @@ def detail(listing_id: int, s: Session = Depends(get_db)):
     if l.family_status == "new":
         l.family_status = "seen"
     photos = _photo_urls(s, [l.id]).get(l.id, [])
-    out = card(l, photos) | {k: getattr(l, k) for k in DETAIL_FIELDS}
+    out = card(l, photos, _price_drops(s, [l.id]).get(l.id)) | {k: getattr(l, k) for k in DETAIL_FIELDS}
     out["photos"] = photos
     out["sources"] = [{"source": x.source, "url": x.url, "seller_phone": x.seller_phone, "seller_name": x.seller_name}
                       for x in s.scalars(select(ListingSource).where(ListingSource.listing_id == l.id))]
@@ -100,7 +123,8 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
 def map_points(s: Session = Depends(get_db)):
     rows = list(s.scalars(select(Listing).where(*visible(), Listing.status == "active", Listing.lat.is_not(None),
                                                 Listing.family_status != "rejected").limit(2000)))
-    photos = _photo_urls(s, [l.id for l in rows])
+    photos, drops = _photo_urls(s, [l.id for l in rows]), _price_drops(s, [l.id for l in rows])
     return [{"id": l.id, "lat": l.lat, "lng": l.lng, "price": l.price, "score": l.score,
-             "family_status": l.family_status, "title": l.title, "district": l.district,
-             "photo_url": (photos.get(l.id) or [None])[0]} for l in rows]
+             "family_status": l.family_status, "status": l.status, "title": l.title,
+             "district": l.district, "photo_url": (photos.get(l.id) or [None])[0],
+             "price_drop": drops.get(l.id)} for l in rows]

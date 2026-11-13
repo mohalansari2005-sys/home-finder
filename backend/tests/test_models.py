@@ -26,3 +26,10 @@ def test_source_unique(db):
     db.add(ListingSource(listing_id=l.id, source="aqar", source_id="1", url="u", raw={}))
     with pytest.raises(IntegrityError):
         db.flush()
+
+
+def test_chat_thread_roundtrip(db):
+    from homefinder.models import ChatThread
+    db.add(ChatThread(id="11111111-1111-1111-1111-111111111111", title="مرحبا")); db.commit()
+    t = db.get(ChatThread, "11111111-1111-1111-1111-111111111111")
+    assert t.title == "مرحبا" and t.created_at is not None and t.updated_at is not None

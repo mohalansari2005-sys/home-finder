@@ -1,0 +1,111 @@
+import json
+from datetime import UTC, datetime, timedelta
+
+from langchain_core.tools import tool
+from sqlalchemy import select
+
+from homefinder import jobs, prefs
+from homefinder.models import Listing, WorkerStatus
+from homefinder.scoring import effective_targets, effective_weights
+from homefinder.server.agent import fallback_search
+from homefinder.server.routes.listings import _photo_urls, _price_drops, card
+from homefinder.server.routes.settings import PrefsPatch, apply_prefs_patch
+from homefinder.textnorm import normalize_district
+from homefinder.worker.scheduler import ENABLED_SOURCES
+
+OFFLINE_AFTER = timedelta(minutes=10)
+DETAIL_KEYS = ("description", "building_age_years", "street_width_m", "facing", "deed_type", "has_maid_room",
+               "has_driver_room", "has_yard", "score_breakdown", "filter_reasons")
+
+
+def _j(o) -> str:
+    return json.dumps(o, ensure_ascii=False, default=str)
+
+
+def _cards(s, rows) -> list[dict]:
+    ids = [l.id for l in rows]
+    photos, drops = _photo_urls(s, ids), _price_drops(s, ids)
+    out = []
+    for l in rows:
+        c = card(l, photos.get(l.id), drops.get(l.id))
+        c["top_reasons"] = [x["factor"] for x in (l.score_breakdown or {}).get("contributions", [])[:2]]
+        out.append(c)
+    return out
+
+
+def make_tools(session_factory):
+    @tool
+    def get_preferences() -> str:
+        """يعرض التفضيلات الحالية: الفلاتر الأساسية والأوزان والأهداف."""
+        with session_factory() as s:
+            p = prefs.get_or_create(s)
+            return _j({"hard_filters": p.hard_filters, "weights": effective_weights(p.weights),
+                       "targets": effective_targets(p.targets), "locked_weights": p.locked_weights})
+
+    @tool
+    def update_preferences(hard_filters: dict | None = None, weights: dict | None = None, targets: dict | None = None,
+                           explanation: str = "تعديل عبر المساعد") -> str:
+        """يعدّل التفضيلات. hard_filters وweights وtargets تعديلات جزئية. explanation جملة عربية تشرح التغيير."""
+        try:
+            with session_factory() as s:
+                out = apply_prefs_patch(s, PrefsPatch(hard_filters=hard_filters, weights=weights, targets=targets),
+                                        "agent", explanation)
+                jobs.enqueue(s, "rescore_all", {}, dedupe_key="rescore_all")
+            return _j({"ok": True, "preferences": out})
+        except ValueError as e:  # includes pydantic ValidationError
+            return _j({"ok": False, "error": str(e)})
+
+    @tool
+    def search_listings(district: str | None = None, max_price: int | None = None, min_bedrooms: int | None = None,
+                        property_type: str | None = None, sort: str = "score", limit: int = 5) -> str:
+        """يبحث في العقارات المحفوظة (غير المستبعدة). sort: score | price | newest. الحد الأقصى 10."""
+        with session_factory() as s:
+            q = select(Listing).where(Listing.merged_into_id.is_(None), Listing.status == "active",
+                                      Listing.family_status != "rejected")
+            if max_price:
+                q = q.where(Listing.price <= max_price)
+            if min_bedrooms:
+                q = q.where(Listing.bedrooms >= min_bedrooms)
+            if property_type:
+                q = q.where(Listing.property_type == property_type)
+            order = {"price": Listing.price.asc().nulls_last(), "newest": Listing.first_seen.desc()}.get(
+                sort, Listing.score.desc().nulls_last())
+            rows = list(s.scalars(q.order_by(order, Listing.id).limit(2000 if district else 200)))
+            if district:
+                d = normalize_district(district)
+                rows = [l for l in rows if normalize_district(l.district) == d]
+            rows = rows[: max(1, min(limit, 10))]
+            return _j({"count": len(rows), "cards": _cards(s, rows)})
+
+    @tool
+    def get_listing(listing_id: int) -> str:
+        """يعرض كل تفاصيل عقار واحد مع شرح التقييم."""
+        with session_factory() as s:
+            l = s.get(Listing, listing_id)
+            if l is None:
+                return _j({"error": "not found"})
+            c = _cards(s, [l])[0]
+            c.update({k: getattr(l, k) for k in DETAIL_KEYS})
+            return _j({"cards": [c], "listing": c})
+
+    @tool
+    def compare_listings(listing_ids: list[int]) -> str:
+        """يقارن بين 2 إلى 4 عقارات."""
+        with session_factory() as s:
+            rows = [l for l in (s.get(Listing, i) for i in listing_ids[:4]) if l]
+            return _j({"cards": _cards(s, rows)})
+
+    @tool
+    def request_scrape(note: str = "") -> str:
+        """يطلب البحث عن إعلانات جديدة حسب التفضيلات الحالية."""
+        with session_factory() as s:
+            w = s.get(WorkerStatus, 1)
+            online = bool(w and w.last_seen and datetime.now(UTC) - w.last_seen < OFFLINE_AFTER)
+            if online:
+                for src in ENABLED_SOURCES:
+                    jobs.enqueue(s, "scrape_search", {"source": src, "from_prefs": True, "scheduled": False},
+                                 dedupe_key=f"scrape:{src}", priority=10)
+                return _j({"mode": "queued"})
+        return _j({"mode": "fallback", **fallback_search.run(session_factory)})
+
+    return [get_preferences, update_preferences, search_listings, get_listing, compare_listings, request_scrape]

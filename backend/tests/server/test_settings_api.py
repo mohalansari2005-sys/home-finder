@@ -58,10 +58,11 @@ def test_put_preferences_validation(family):
 
 def test_search_relevant_change_enqueues_scrape(db, family):
     family.put("/api/preferences", json={"hard_filters": {"districts": ["الياسمين"]}})
-    j = db.query(Job).filter(Job.type == "scrape_search").one()
-    assert j.payload == {"source": "aqar", "from_prefs": True, "scheduled": False} and j.priority == 5
+    jobs_ = db.query(Job).filter(Job.type == "scrape_search").order_by(Job.id).all()
+    assert [j.payload for j in jobs_] == [{"source": src, "from_prefs": True, "scheduled": False} for src in ("aqar", "haraj")]
+    assert all(j.priority == 5 for j in jobs_)
     family.put("/api/preferences", json={"hard_filters": {"min_bedrooms": 4}})
-    assert db.query(Job).filter(Job.type == "scrape_search").count() == 1
+    assert db.query(Job).filter(Job.type == "scrape_search").count() == 2
 
 
 def test_resume_adapter(db, family):
