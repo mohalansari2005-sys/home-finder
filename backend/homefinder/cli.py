@@ -57,6 +57,8 @@ def main(argv=None) -> None:
         with session_scope() as s:
             pr = prefs.get_or_create(s)
             pr.hard_filters = {**pr.hard_filters, **json.loads(a.json)}
+            s.flush()
+            rescore_all(s)  # listings scraped before the change must not keep their old filter result
     elif a.cmd == "prune-photos":
         with session_scope() as s:
             print(f"pruned photos of {prune_photos(s, get_settings().photos_dir, a.days)} listings")

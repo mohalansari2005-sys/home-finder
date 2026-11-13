@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from homefinder import adapters_state, prefs
 from homefinder.models import Listing, ListingSource
-from homefinder.rescore import apply_score, rescore_all
+from homefinder.rescore import NO_COMMUTES, apply_score, rescore_all, wants_commutes_sql
 from homefinder.schemas import SearchQuery
 from homefinder.worker.enrich.commute import compute_commutes
 from homefinder.worker.enrich.pipeline import enrich_listing
@@ -76,9 +76,11 @@ def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
         return {"skipped": "no tomtom key"}
     n = 0
     with deps.session_factory() as s:
-        ids = list(s.scalars(select(Listing.id).where(
-            Listing.lat.is_not(None), Listing.merged_into_id.is_(None), Listing.status == "active",
-            Listing.family_status != "rejected")))  # removed/rejected listings are never shown: don't pay to route them
+        q = select(Listing.id).where(  # only listings the family can see: each one costs a request per place
+            Listing.lat.is_not(None), Listing.merged_into_id.is_(None), Listing.status == "active", wants_commutes_sql())
+        if payload.get("missing_only"):  # after a filter change: just the newly visible ones
+            q = q.where(NO_COMMUTES)
+        ids = list(s.scalars(q))
     for lid in ids:
         with deps.session_factory() as s:
             l = s.get(Listing, lid)

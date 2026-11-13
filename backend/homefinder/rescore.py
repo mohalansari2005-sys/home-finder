@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.orm import Session
 
+from homefinder import jobs
 from homefinder import prefs as prefs_mod
 from homefinder.models import Listing, PreferenceChange, Preferences
 from homefinder.scoring import passes_hard_filters, score
@@ -13,6 +14,20 @@ def apply_score(listing: Listing, p: Preferences) -> None:
     listing.score, listing.score_breakdown = r.total, r.as_dict()
 
 
+KEPT = ("bookmarked", "visited")
+NO_COMMUTES = text("listings.commutes = '{}'::jsonb")
+
+
+def wants_commutes(l: Listing) -> bool:
+    """Drive times cost TomTom requests (one per place), so only listings the family can see get them: those
+    passing the hard filters, and the ones they kept."""
+    return l.family_status != "rejected" and (bool(l.passes_filters) or l.family_status in KEPT)
+
+
+def wants_commutes_sql():
+    return and_(Listing.family_status != "rejected", or_(Listing.passes_filters.is_(True), Listing.family_status.in_(KEPT)))
+
+
 def rescore_all(s: Session) -> int:
     p = prefs_mod.get_or_create(s)
     n = 0
@@ -20,6 +35,10 @@ def rescore_all(s: Session) -> int:
         apply_score(l, p)
         n += 1
     s.flush()
+    # a filter change can bring listings into view that were never routed: route just those, in the background
+    if s.scalar(select(Listing.id).where(Listing.merged_into_id.is_(None), Listing.status == "active",
+                                         Listing.lat.is_not(None), NO_COMMUTES, wants_commutes_sql()).limit(1)):
+        jobs.enqueue(s, "recompute_commutes", {"missing_only": True}, dedupe_key="recompute_commutes:missing")
     return n
 
 
