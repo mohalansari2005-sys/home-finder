@@ -1,0 +1,9 @@
+services:
+  testdb:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: hf
+      POSTGRES_PASSWORD: hf
+      POSTGRES_DB: hf_test
+    ports: ["55432:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]

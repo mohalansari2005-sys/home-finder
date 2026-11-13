@@ -8,3 +8,9 @@ dist/
 data/photos/
 *.dump
 .DS_Store
+.superpowers/
+backend/.venv/
+tests/fixtures/**/raw/
+web/test-results/
+web/playwright-report/
+*.egg-info/

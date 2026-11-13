@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homefinder"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "sqlalchemy>=2.0.36",
+  "psycopg[binary]>=3.2",
+  "geoalchemy2>=0.15",
+  "alembic>=1.14",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "httpx>=0.27",
+  "openai>=1.55",
+]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.115", "uvicorn[standard]>=0.32", "bcrypt>=4.2", "itsdangerous>=2.2", "python-multipart>=0.0.17"]
+worker = ["curl_cffi>=0.7", "playwright>=1.48", "pillow>=11", "imagehash>=4.3"]
+dev = ["pytest>=8.3", "pyyaml>=6"]
+
+[tool.setuptools.packages.find]
+include = ["homefinder*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: hits real websites", "llm: calls a real LLM"]
+addopts = "-m 'not live and not llm'"
