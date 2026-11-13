@@ -112,7 +112,8 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
     ['حوش', yesNo(l.has_yard)], ['مصعد', yesNo(l.has_elevator)],
   ]
   const phone = l.sources.find((s) => s.seller_phone)?.seller_phone
-  const saved = l.family_status === 'bookmarked'
+  const visited = l.family_status === 'visited'  // already saved; toggling would reset the visit state
+  const saved = l.family_status === 'bookmarked' || visited
   return (
     <div className="space-y-5 p-4 pb-10">
       <Gallery photos={l.photos} />
@@ -143,7 +144,7 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
       )}
       {l.geo_precision === 'district' && <Badge variant="outline" className="border-warning/40 bg-warning-soft text-warning">الموقع تقريبي (مركز الحي)</Badge>}
       <div className="flex gap-2">
-        <Button className="flex-1" variant={saved ? 'default' : 'secondary'} onClick={() => react(l.id, saved ? 'unreject' : 'bookmark')}>
+        <Button className="flex-1" variant={saved ? 'default' : 'secondary'} aria-pressed={saved} disabled={visited} onClick={() => react(l.id, saved ? 'unreject' : 'bookmark')}>
           {saved ? <><Check aria-hidden />محفوظ</> : <><Bookmark aria-hidden />حفظ</>}
         </Button>
         <Button className="flex-1" variant="outline" onClick={() => rejectFlow.ask(l.id, l.title)}><X aria-hidden />استبعاد</Button>

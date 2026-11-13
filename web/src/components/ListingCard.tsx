@@ -15,7 +15,8 @@ interface Props {
 
 /** Flat tile: photo with the seal, then text on the page background. No shadow. */
 export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode, compareSelected, onCompareToggle }: Props) {
-  const saved = l.family_status === 'bookmarked'
+  const visited = l.family_status === 'visited'  // already saved; toggling would reset the visit state
+  const saved = l.family_status === 'bookmarked' || visited
   const area = l.built_area_m2 ?? l.land_area_m2
   return (
     <article onClick={() => onOpen(l.id)}
@@ -52,7 +53,7 @@ export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode
         </div>
         <CommuteChips commutes={l.commutes} />
         <div className="flex gap-2 pt-1">
-          <Button variant={saved ? 'default' : 'secondary'} aria-pressed={saved} className="flex-1"
+          <Button variant={saved ? 'default' : 'secondary'} aria-pressed={saved} disabled={visited} className="flex-1"
                   onClick={(e) => { e.stopPropagation(); onReact(saved ? 'unreject' : 'bookmark') }}>
             {saved ? <BookmarkCheck aria-hidden /> : <Bookmark aria-hidden />}
             {saved ? 'محفوظ' : 'حفظ'}

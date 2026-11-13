@@ -35,6 +35,16 @@ it('bookmarked card shows saved state', () => {
   expect(screen.getByRole('button', { name: 'محفوظ' })).toHaveAttribute('aria-pressed', 'true')
 })
 
+it('a visited listing counts as saved and cannot be un-saved (that would erase the visit)', async () => {
+  const onReact = vi.fn()
+  render(<ListingCard listing={{ ...base, family_status: 'visited' }} onOpen={() => {}} onReact={onReact} />)
+  const b = screen.getByRole('button', { name: 'محفوظ' })
+  expect(b).toHaveAttribute('aria-pressed', 'true')
+  expect(b).toBeDisabled()
+  await userEvent.click(b)
+  expect(onReact).not.toHaveBeenCalled()
+})
+
 it('uses Arabic plural forms for rooms', () => {
   render(<ListingCard listing={{ ...base, bedrooms: 2 }} onOpen={() => {}} onReact={() => {}} />)
   expect(screen.getByText('غرفتان')).toBeInTheDocument()
