@@ -118,6 +118,8 @@ class Preferences(Base):
     weights: Mapped[dict] = mapped_column(JSONB, default=dict)
     targets: Mapped[dict] = mapped_column(JSONB, default=dict)
     locked_weights: Mapped[list] = mapped_column(JSONB, default=list)
+    learned_through_reaction_id: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    learn_attempted_through_reaction_id: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # last learn run, even if skipped
     updated_at: Mapped[datetime] = _now()
 
 

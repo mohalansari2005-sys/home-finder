@@ -126,10 +126,18 @@ def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
     return {"removed": True}
 
 
+def handle_learn(deps: WorkerDeps, payload: dict) -> dict:
+    from homefinder.learner import run_learn  # sklearn is imported only when the job runs
+
+    with deps.session_factory() as s:
+        return run_learn(s)
+
+
 HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "scrape_search": handle_scrape_search,
     "refresh_listing": handle_refresh_listing,
     "rescore_all": handle_rescore_all,
+    "learn": handle_learn,
     "recompute_commutes": handle_recompute_commutes,
     "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
 }

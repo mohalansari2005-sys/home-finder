@@ -2,12 +2,14 @@ from datetime import timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource, Photo, PriceHistory, Reaction
 from homefinder.server.deps import get_db, require_family
+from homefinder.suggestions import REASON_CODES
 
 router = APIRouter(dependencies=[Depends(require_family)])
 
@@ -82,15 +84,8 @@ def feed(view: Literal["all", "new", "bookmarked"] = "all", district: str | None
             "next_offset": offset + limit if more else None}
 
 
-@router.get("/listings/{listing_id}")
-def detail(listing_id: int, s: Session = Depends(get_db)):
-    l = s.get(Listing, listing_id)
-    if l is None:
-        raise HTTPException(404)
-    if l.family_status == "new":
-        l.family_status = "seen"
-    photos = _photo_urls(s, [l.id]).get(l.id, [])
-    out = card(l, photos, _price_drops(s, [l.id]).get(l.id)) | {k: getattr(l, k) for k in DETAIL_FIELDS}
+def _detail(s: Session, l: Listing, photos: list[str], drop: dict | None) -> dict:
+    out = card(l, photos, drop) | {k: getattr(l, k) for k in DETAIL_FIELDS}
     out["photos"] = photos
     out["sources"] = [{"source": x.source, "url": x.url, "seller_phone": x.seller_phone, "seller_name": x.seller_name}
                       for x in s.scalars(select(ListingSource).where(ListingSource.listing_id == l.id))]
@@ -100,12 +95,48 @@ def detail(listing_id: int, s: Session = Depends(get_db)):
     return out
 
 
+@router.get("/listings/{listing_id}")
+def detail(listing_id: int, s: Session = Depends(get_db)):
+    l = s.get(Listing, listing_id)
+    if l is None:
+        raise HTTPException(404)
+    if l.family_status == "new":
+        l.family_status = "seen"
+    photos = _photo_urls(s, [l.id]).get(l.id, [])
+    return _detail(s, l, photos, _price_drops(s, [l.id]).get(l.id))
+
+
+@router.get("/compare")
+def compare(ids: str = Query(...), s: Session = Depends(get_db)):
+    """2-4 listings in the requested order, as GET /listings/{id}. Unknown or merged ids are skipped; does not mark anything seen."""
+    try:
+        wanted = list(dict.fromkeys(int(x) for x in ids.split(",") if x.strip()))
+    except ValueError:
+        raise HTTPException(422, "ids must be comma-separated integers") from None
+    by_id = {l.id: l for l in s.scalars(select(Listing).where(Listing.id.in_(wanted), *visible()))}
+    rows = [by_id[i] for i in wanted if i in by_id]
+    if not 2 <= len(rows) <= 4:
+        raise HTTPException(422, "compare needs 2 to 4 valid listings")
+    found = [l.id for l in rows]
+    photos, drops = _photo_urls(s, found), _price_drops(s, found)
+    return [_detail(s, l, photos.get(l.id, []), drops.get(l.id)) for l in rows]
+
+
 class ReactBody(BaseModel):
     kind: Literal["bookmark", "reject", "unreject"]
     reason_code: str | None = None
-    note: str | None = None
+    note: str | None = Field(None, max_length=500)
+
+    @field_validator("reason_code")
+    @classmethod
+    def _known_reason(cls, v: str | None) -> str | None:
+        if v is not None and v not in REASON_CODES:
+            raise ValueError(f"reason_code must be one of {REASON_CODES}")
+        return v
 
 
+LEARN_KINDS = ["bookmark", "reject", "visit_rating"]
+LEARN_EVERY = 10
 NEXT_STATUS = {"bookmark": "bookmarked", "reject": "rejected", "unreject": "seen"}
 
 
@@ -115,7 +146,16 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
     if l is None:
         raise HTTPException(404)
     l.family_status = NEXT_STATUS[body.kind]
-    s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code, note=body.note))
+    reject = body.kind == "reject"  # a reason and note only mean something on a reject
+    s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code if reject else None,
+                   note=body.note if reject else None))
+    s.flush()
+    pref = prefs.get_or_create(s)
+    since = max(pref.learned_through_reaction_id, pref.learn_attempted_through_reaction_id)
+    fresh = s.scalar(select(func.count()).select_from(Reaction).where(
+        Reaction.id > since, Reaction.kind.in_(LEARN_KINDS)))
+    if fresh >= LEARN_EVERY:
+        jobs.enqueue(s, "learn", {}, dedupe_key="learn")
     return {"family_status": l.family_status}
 
 

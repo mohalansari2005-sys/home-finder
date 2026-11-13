@@ -5,8 +5,14 @@ import type { FeedView } from '../api/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ListingCard } from './ListingCard'
+import { useRejectFlow } from './useRejectFlow'
 
-interface Props { view: FeedView; district?: string; selectedId: number | null; onOpen: (id: number) => void; columns: 1 | 2 }
+export interface CompareSelection { ids: number[]; onToggle: (id: number) => void }
+interface Props {
+  view: FeedView; district?: string; selectedId: number | null; onOpen: (id: number) => void; columns: 1 | 2
+  /** Set while in compare mode. */
+  compare?: CompareSelection
+}
 
 function CardSkeleton() {
   return (
@@ -19,9 +25,10 @@ function CardSkeleton() {
   )
 }
 
-export function FeedList({ view, district, selectedId, onOpen, columns }: Props) {
+export function FeedList({ view, district, selectedId, onOpen, columns, compare }: Props) {
   const feed = useFeed(view, district)
   const react = useReactWithUndo()
+  const rejectFlow = useRejectFlow()
   const grid = columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
   if (feed.isLoading) return <div className={`grid gap-2 p-2 ${grid}`} aria-busy>{[0, 1, 2].map((i) => <CardSkeleton key={i} />)}</div>
   if (feed.isError) {
@@ -46,12 +53,14 @@ export function FeedList({ view, district, selectedId, onOpen, columns }: Props)
     <div className="space-y-4 p-2">
       <div className={`grid gap-2 ${grid}`}>
         {items.map((l) => (
-          <ListingCard key={l.id} listing={l} selected={l.id === selectedId} onOpen={onOpen} onReact={(kind) => react(l.id, kind)} />
+          <ListingCard key={l.id} listing={l} selected={l.id === selectedId} onOpen={onOpen} onReact={(kind) => (kind === 'reject' ? rejectFlow.ask(l.id, l.title) : react(l.id, kind))}
+                       compareMode={!!compare} compareSelected={compare?.ids.includes(l.id)} onCompareToggle={() => compare?.onToggle(l.id)} />
         ))}
       </div>
       {feed.hasNextPage && (
         <Button variant="outline" className="w-full" disabled={feed.isFetchingNextPage} onClick={() => feed.fetchNextPage()}>المزيد</Button>
       )}
+      {rejectFlow.element}
     </div>
   )
 }

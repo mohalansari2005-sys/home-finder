@@ -60,3 +60,17 @@ it('shows the price-drop badge with the amount and the old price struck through'
   expect(document.querySelector('del')).toHaveTextContent('2,000,000 ر.س')
   expect(screen.getByText('1,850,000 ر.س')).toBeInTheDocument()
 })
+
+it('compare toggle only shows in compare mode and does not open the card', async () => {
+  const onOpen = vi.fn(), onToggle = vi.fn()
+  const { rerender } = render(<ListingCard listing={base} onOpen={onOpen} onReact={() => {}} />)
+  expect(screen.queryByRole('button', { name: 'قارن' })).toBeNull()
+  rerender(<ListingCard listing={base} onOpen={onOpen} onReact={() => {}} compareMode compareSelected={false} onCompareToggle={onToggle} />)
+  const btn = screen.getByRole('button', { name: 'قارن' })
+  expect(btn).toHaveAttribute('aria-pressed', 'false')
+  await userEvent.click(btn)
+  expect(onToggle).toHaveBeenCalledTimes(1)
+  expect(onOpen).not.toHaveBeenCalled()
+  rerender(<ListingCard listing={base} onOpen={onOpen} onReact={() => {}} compareMode compareSelected onCompareToggle={onToggle} />)
+  expect(screen.getByRole('button', { name: 'قارن' })).toHaveAttribute('aria-pressed', 'true')
+})

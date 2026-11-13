@@ -2,7 +2,7 @@
 
 A private, Arabic-first web app that helps one family find a home to **buy in Riyadh**.
 
-It collects listings from Aqar (and Haraj, in progress), scores each one 0–100 against the family's needs with a short explanation, and shows every listing with its photos, a map, and rush-hour drive times to the places that matter: one school, one workplace, one university and King Khalid International Airport. It learns from what the family saves and rejects, and it plans in-person visit trips that group liked homes by district.
+It collects listings from Aqar and Haraj, scores each one 0–100 against the family's needs with a short explanation, and shows every listing with its photos, a map, and rush-hour drive times to the places that matter: one school, one workplace, one university and King Khalid International Airport. It learns from what the family saves and rejects, and it plans in-person visit trips that group liked homes by district.
 
 The app is right-to-left Arabic throughout and is installable as a PWA. It has layouts for phone, iPad and desktop.
 
@@ -143,8 +143,8 @@ See [docs/DEPLOY.md](docs/DEPLOY.md). It covers server bootstrap, the `.env` val
   |---|---|---|
   | M1 Foundation | Aqar scraping, enrichment, API, feed, detail, map, deploy, CI | merged |
   | M2 Scoring and settings | explainable score, hard filters, preferences | merged |
-  | M3 Agent, Haraj and dedupe | chat assistant, Haraj, duplicate merge, removed listings, price drops | in progress |
-  | M4 Learning and compare | learning from saves and rejects, suggestions, compare view | planned |
+  | M3 Agent, Haraj and dedupe | chat assistant, Haraj, duplicate merge, removed listings, price drops | merged |
+  | M4 Learning and compare | learning from saves and rejects, suggestions, compare view | merged |
   | M5 Visits | visit trips grouped by district, contact tracking, pre-visit checks | planned |
 
 - The design spec is in `docs/superpowers/specs/`, and the per-milestone plans are in `docs/superpowers/plans/`.

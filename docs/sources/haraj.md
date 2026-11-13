@@ -34,10 +34,10 @@ be inferred from age. Posts whose `status` is false, or that no longer carry a s
 | id | `id` (int); the post URL is `https://haraj.com.sa/` + `URL` (`11<id>/<slug>/`), we use `https://haraj.com.sa/<id>` |
 | title | `title` |
 | body | `bodyTEXT` (plain text; contains HTML entities such as `&ndash;`) |
-| price | `price { formattedPrice inputPrice }` is **null on every real-estate post seen (40 of 40)**. Price lives in the body (licensed posts carry `سعر الوحدة: 1600000`; others say "السعر: 4,800,000 ريال"). The LLM extraction step fills it in. |
+| price | `price { formattedPrice inputPrice }` is **null on every real-estate post seen (40 of 40)**. Price lives in the body (licensed posts carry `سعر الوحدة: 1600000`; others say "السعر: 4,800,000 ريال"). `parse_price_from_text` (`haraj_text.py`) reads it deterministically after `السعر`, `سعر الوحدة`, `المطلوب` or `الحد` (100,000 to 50,000,000 SAR); the LLM step fills only what is left. |
 | city | `city`, `geoCity` |
 | district | `geoNeighborhood` (always present, 40 of 40), also in tags as `فلل للبيع في حي X في الرياض` |
-| geo | `geoHash` (9 char geohash, about 5 m). It matches the Google-Maps link in the body when both exist. Used as `approximate` coordinates. |
+| geo | `geoHash` (9 char geohash, about 5 m). It matches the Google-Maps link in the body when both exist. Used as `approximate` coordinates. A Google Maps link with coordinates in the body wins over it (`parse_maps_link`); if the two are more than 2 km apart the adapter logs a warning and lowers `geo_precision` one level (`district`), which also keeps the post out of dedupe. |
 | images | `imagesList` (full URLs, `mimg6cdn.haraj.com.sa` / `img4cdn.haraj.com.sa`), `thumbURL` is a bare filename |
 | date | `postDate`, `updateDate` (unix seconds) |
 | tags | `tags` |

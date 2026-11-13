@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from homefinder.config import get_settings
 from homefinder.server import auth
 from homefinder.server.agent.graph import get_checkpointer
-from homefinder.server.routes import chat, listings, settings, status, worker
+from homefinder.server.routes import chat, listings, settings, status, suggestions, worker
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api")
     app.include_router(status.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
+    app.include_router(suggestions.router, prefix="/api")
     app.include_router(worker.router, prefix="/worker")
 
     @app.get("/api/health")

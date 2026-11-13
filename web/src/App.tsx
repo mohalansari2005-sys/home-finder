@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
 import { FeedPage } from './pages/FeedPage'
 import { MapPage } from './pages/MapPage'
+import { ComparePage } from './pages/ComparePage'
 import { ListingPage } from './pages/ListingPage'
 import { AssistantPage } from './pages/AssistantPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/" element={<Protected><FeedPage /></Protected>} />
       <Route path="/map" element={<Protected><MapPage /></Protected>} />
       <Route path="/listing/:id" element={<Protected><ListingPage /></Protected>} />
+      <Route path="/compare" element={<Protected><ComparePage /></Protected>} />
       <Route path="/assistant" element={<Protected><AssistantPage /></Protected>} />
       <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />

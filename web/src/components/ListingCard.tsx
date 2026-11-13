@@ -1,4 +1,4 @@
-import { Bath, BedDouble, Bookmark, BookmarkCheck, House, Ruler, TrendingDown, X } from 'lucide-react'
+import { Bath, BedDouble, Bookmark, BookmarkCheck, Check, Columns2, House, Ruler, TrendingDown, X } from 'lucide-react'
 import type { ListingCard as T, ReactKind } from '../api/types'
 import { formatArea, formatNumber, formatPrice, formatRooms, PROPERTY_TYPE_AR } from '../lib/format'
 import { Badge } from '@/components/ui/badge'
@@ -7,16 +7,20 @@ import { cn } from '@/lib/utils'
 import { CommuteChips } from './CommuteChips'
 import { ScoreSeal } from './ScoreSeal'
 
-interface Props { listing: T; selected?: boolean; onOpen: (id: number) => void; onReact: (k: ReactKind) => void }
+interface Props {
+  listing: T; selected?: boolean; onOpen: (id: number) => void; onReact: (k: ReactKind) => void
+  /** Compare mode adds a toggle row; the selection itself lives in the page (URL). */
+  compareMode?: boolean; compareSelected?: boolean; onCompareToggle?: () => void
+}
 
 /** Flat tile: photo with the seal, then text on the page background. No shadow. */
-export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
+export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode, compareSelected, onCompareToggle }: Props) {
   const saved = l.family_status === 'bookmarked'
   const area = l.built_area_m2 ?? l.land_area_m2
   return (
     <article onClick={() => onOpen(l.id)}
              className={cn('cursor-pointer space-y-3 rounded-2xl border p-2 transition-transform active:scale-[0.99] motion-reduce:active:scale-100',
-               selected ? 'border-primary' : 'border-transparent')}>
+               selected || compareSelected ? 'border-primary' : 'border-transparent')}>
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
         {l.photo_url
           ? <img src={l.photo_url} alt="" loading="lazy" width={640} height={480} className={cn('size-full object-cover', l.status === 'removed' && 'grayscale')} />
@@ -58,6 +62,13 @@ export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
             استبعاد
           </Button>
         </div>
+        {compareMode && (
+          <Button variant={compareSelected ? 'default' : 'outline'} aria-pressed={!!compareSelected} className="w-full"
+                  onClick={(e) => { e.stopPropagation(); onCompareToggle?.() }}>
+            {compareSelected ? <Check aria-hidden /> : <Columns2 aria-hidden />}
+            قارن
+          </Button>
+        )}
       </div>
     </article>
   )
