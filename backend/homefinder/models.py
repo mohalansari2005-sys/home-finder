@@ -243,3 +243,12 @@ class VisitPhoto(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     stop_id: Mapped[int] = mapped_column(ForeignKey("visit_stops.id", ondelete="CASCADE"), index=True)
     path: Mapped[str] = mapped_column(Text)  # relative to visit_photos_dir, e.g. "7/<uuid>.jpg"
+
+
+class DistrictDriveCache(Base):
+    """Drive minutes between two district centroids (a < b, normalized names). minutes None = no route."""
+    __tablename__ = "district_drive_cache"
+    a: Mapped[str] = mapped_column(String(120), primary_key=True)
+    b: Mapped[str] = mapped_column(String(120), primary_key=True)
+    minutes: Mapped[int | None] = mapped_column(Integer)
+    computed_at: Mapped[datetime] = _now()
