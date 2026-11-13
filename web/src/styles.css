@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --breakpoint-xl: 1200px;
+  --color-brand: #0f766e;
+  --color-brand-soft: #ccfbf1;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-slate-50 text-slate-900 antialiased; }
