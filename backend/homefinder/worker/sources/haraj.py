@@ -8,6 +8,7 @@ from homefinder.sanity import PRICE, clean_int
 from homefinder.schemas import CanonicalFields, HealthReport, PropertyType, RawListing, SearchQuery
 from homefinder.textnorm import normalize_ar, normalize_district
 from homefinder.worker.sources.base import Pacer
+from homefinder.worker.sources.haraj_text import parse_price_from_text
 from homefinder.worker.sources.haraj_transport import SITE, HarajTransport
 
 log = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ def parse_post(d: dict, field_map_override: bool = False) -> RawListing | None:
     fields = CanonicalFields(
         property_type=ptype, title=html.unescape(title) or None, description=body or None,
         city=d.get(m["city"]) or None, district=_district(d.get(m["district"]), title, body),
-        price=_price(d.get(m["price"])), lat=lat, lng=lng)
+        price=_price(d.get(m["price"])) or parse_price_from_text(body, html.unescape(title)), lat=lat, lng=lng)
     return RawListing(
         source="haraj", source_id=str(pid), url=f"{SITE}/{pid}", fields=fields,
         geo_precision="approximate" if pt else None,
