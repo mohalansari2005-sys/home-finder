@@ -178,3 +178,12 @@ class ApiUsage(Base):
     month: Mapped[str] = mapped_column(String(7), primary_key=True)  # YYYY-MM (Asia/Riyadh)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     calls: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class PreferenceChange(Base):
+    __tablename__ = "preference_changes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    at: Mapped[datetime] = _now()
+    source: Mapped[str] = mapped_column(String(10))  # user|learner|agent
+    diff: Mapped[dict] = mapped_column(JSONB)
+    explanation: Mapped[str] = mapped_column(Text)

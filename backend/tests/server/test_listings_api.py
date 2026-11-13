@@ -43,6 +43,7 @@ def test_detail_marks_seen_and_includes_sources(db, family):
     l = mk(db)
     d = family.get(f"/api/listings/{l.id}").json()
     assert d["sources"][0]["seller_phone"] == "0500000000" and d["family_status"] == "seen"
+    assert d["passes_filters"] is True and d["filter_reasons"] == []
     assert family.get("/api/listings/999999").status_code == 404
 
 

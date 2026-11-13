@@ -3,8 +3,9 @@ from datetime import timedelta
 
 from sqlalchemy import func, select
 
-from homefinder import jobs
+from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource
+from homefinder.rescore import apply_score
 from homefinder.usage import BudgetExceeded
 from homefinder.worker.enrich.commute import compute_commutes
 from homefinder.worker.enrich.extract import extract_missing
@@ -40,6 +41,7 @@ def enrich_listing(deps, listing_id: int) -> dict:
             except Exception as e:  # noqa: BLE001
                 log.warning("enrich %s: commute failed: %s", listing_id, e)
                 requeue = True
+        apply_score(l, prefs.get_or_create(s))
         l.enriched_at = func.now()
         need_photos = not l.photos_fetched and deps.photo_sink is not None and deps.http is not None
         urls = next((src.photo_urls for src in s.scalars(select(ListingSource).where(

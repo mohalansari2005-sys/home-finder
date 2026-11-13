@@ -9,7 +9,6 @@ from sqlalchemy import select
 from homefinder import jobs, prefs
 from homefinder.db import session_scope
 from homefinder.models import Place
-from homefinder.schemas import SearchQuery
 
 KKIA = ("مطار الملك خالد الدولي", 24.9576, 46.6988)
 
@@ -50,8 +49,7 @@ def main(argv=None) -> None:
             pr.hard_filters = {**pr.hard_filters, **json.loads(a.json)}
     elif a.cmd == "enqueue-scrape":
         with session_scope() as s:
-            q = SearchQuery.from_hard_filters(prefs.get_or_create(s).hard_filters)
-            print(jobs.enqueue(s, "scrape_search", {"source": "aqar", "query": q.model_dump(), "scheduled": False},
+            print(jobs.enqueue(s, "scrape_search", {"source": "aqar", "from_prefs": True, "scheduled": False},
                                dedupe_key="scrape:aqar", priority=5))
 
 

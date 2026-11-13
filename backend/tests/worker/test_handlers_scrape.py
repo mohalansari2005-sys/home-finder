@@ -54,3 +54,17 @@ def test_outdated_app_version_pauses_with_clear_reason(db):
     with session_scope() as s:
         row = s.get(AdapterHealth, "aqar")
         assert row.status == "paused" and row.reason == "aqar app-version outdated"
+
+
+def test_scrape_from_prefs_builds_query_at_run_time(db):
+    from homefinder import prefs
+    p = prefs.get_or_create(db); p.hard_filters = {**p.hard_filters, "districts": ["النرجس"], "price_max": 2_000_000}; db.commit()
+    seen = []
+
+    class Spy(FakeAdapter):
+        def search(self, q):
+            seen.append(q)
+            yield from self.raws
+
+    dispatch(deps(Spy([r(1)])), "scrape_search", {"source": "aqar", "from_prefs": True})
+    assert seen[0].districts == ["النرجس"] and seen[0].price_max == 2_000_000

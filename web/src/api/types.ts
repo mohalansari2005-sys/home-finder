@@ -14,22 +14,36 @@ export interface ListingDetail extends ListingCard {
   has_driver_room: boolean | null; has_yard: boolean | null; has_elevator: boolean | null; geo_precision: string
   photos: string[]; sources: { source: string; url: string; seller_phone: string | null; seller_name: string | null }[]
   price_history: { price: number; observed_at: string }[]; score_breakdown: ScoreBreakdown | null; status: string
+  passes_filters: boolean; filter_reasons: string[]
 }
 export interface ScoreContribution { factor: string; value: number; weight: number; delta: number }
-export interface ScoreBreakdown { total: number; contributions: ScoreContribution[]; missing: string[] }
+export interface ScoreBreakdown { total: number | null; contributions: ScoreContribution[]; missing: string[] }
 export interface FeedPage { items: ListingCard[]; next_offset: number | null }
 export interface MapPoint {
   id: number; lat: number; lng: number; price: number | null; score: number | null; family_status: FamilyStatus
   title: string | null; district: string | null; photo_url: string | null
 }
 export interface Place { kind: CommuteKind; name: string; lat: number; lng: number }
+export interface HardFilters {
+  city?: string; property_types?: string[]; districts?: string[]; price_max?: number | null; min_bedrooms?: number | null
+  max_commute?: Partial<Record<CommuteKind, number>>; building_age_max?: number | null; street_width_min?: number | null
+}
 export interface Preferences {
-  hard_filters: Record<string, unknown>; weights: Record<string, number>; targets: Record<string, unknown>; locked_weights: string[]
+  hard_filters: HardFilters; weights: Record<string, number>; targets: Record<string, unknown>; locked_weights: string[]
+  defaults: { weights: Record<string, number>; targets: Record<string, unknown> }
+}
+export interface PreferencePatch {
+  hard_filters?: Record<string, unknown>; weights?: Record<string, number>; targets?: Record<string, unknown>
+  unlock?: string[]; reset_weights?: boolean
+}
+export interface PreferenceChange {
+  at: string; source: 'user' | 'learner' | 'agent'; diff: Record<string, { from: unknown; to: unknown }>; explanation: string
 }
 export interface SystemStatus {
   worker: { online: boolean; last_seen: string | null; hostname: string | null; current_job_id: number | null }
   jobs: { pending: number; claimed: number; failed: number }
-  adapters: { source: string; status: string; reason: string | null; last_success_at: string | null }[]
+  counts: { active: number; new: number; bookmarked: number; rejected: number; passing: number }
+  adapters: { source: string; status: string; reason: string | null; last_success_at: string | null; last_scrape_at: string | null }[]
   failed_jobs: { id: number; type: string; error: string | null; finished_at: string | null }[]
 }
 export type FeedView = 'all' | 'new' | 'bookmarked'

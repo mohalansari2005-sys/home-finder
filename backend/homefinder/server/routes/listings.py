@@ -12,7 +12,7 @@ router = APIRouter(dependencies=[Depends(require_family)])
 
 DETAIL_FIELDS = ["description", "livings", "building_age_years", "street_width_m", "facing", "street_count",
                  "deed_type", "has_maid_room", "has_driver_room", "has_yard", "has_elevator", "geo_precision",
-                 "score_breakdown", "status"]
+                 "score_breakdown", "status", "passes_filters", "filter_reasons"]
 
 
 def _photo_urls(s: Session, ids: list[int]) -> dict[int, list[str]]:

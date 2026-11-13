@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { Bookmark, Check, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, X } from 'lucide-react'
 import { useListing, useReactWithUndo } from '../api/hooks'
 import { FACING_AR, formatArea, formatNumber, formatPrice, formatYears, PROPERTY_TYPE_AR } from '../lib/format'
+import { REASON_AR } from '../lib/factors'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { CommuteChips } from './CommuteChips'
+import { ScoreBreakdown } from './ScoreBreakdown'
 import { ScoreSeal } from './ScoreSeal'
 
 const yesNo = (v: boolean | null) => (v == null ? null : v ? 'نعم' : 'لا')
@@ -124,6 +126,13 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
         </div>
       </div>
       <CommuteChips commutes={l.commutes} />
+      {!l.passes_filters && l.filter_reasons.length > 0 && (
+        <div role="note" className="rounded-2xl bg-warning-soft px-4 py-3 text-sm text-warning">
+          <p className="font-medium">لا يطابق شروطكم:</p>
+          <ul className="mt-1 list-inside list-disc">{l.filter_reasons.map((r) => <li key={r}>{REASON_AR[r] ?? r}</li>)}</ul>
+        </div>
+      )}
+      <ScoreBreakdown breakdown={l.score_breakdown} />
       {l.lat != null && (
         <a className="inline-flex items-center gap-1.5 text-sm text-accent underline-offset-4 hover:underline" target="_blank" rel="noreferrer"
            href={`https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`}>
