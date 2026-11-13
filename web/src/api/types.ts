@@ -50,3 +50,5 @@ export interface SystemStatus {
 }
 export type FeedView = 'all' | 'new' | 'bookmarked'
 export type ReactKind = 'bookmark' | 'reject' | 'unreject'
+export interface Suggestion { code: string; reason: string; count: number; patch: { hard_filters: Record<string, unknown> }; text: string }
+export interface ReactExtra { reason_code?: string | null; note?: string | null }

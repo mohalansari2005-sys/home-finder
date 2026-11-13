@@ -5,6 +5,7 @@ import type { FeedView } from '../api/types'
 import { FeedList } from '../components/FeedList'
 import { ListingDetailView } from '../components/ListingDetailView'
 import { MapView } from '../components/MapView'
+import { SuggestionBanner } from '../components/SuggestionBanner'
 import { useBreakpoint } from '../lib/breakpoint'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -48,7 +49,7 @@ export function FeedPage() {
       </Tabs>
     </div>
   )
-  const list = (cols: 1 | 2) => <>{tabs}<FeedList view={view} selectedId={selected} onOpen={open} columns={cols} /></>
+  const list = (cols: 1 | 2) => <>{tabs}<SuggestionBanner /><FeedList view={view} selectedId={selected} onOpen={open} columns={cols} /></>
 
   if (bp === 'phone') return list(1)
   if (bp === 'tablet' && !landscape) {
