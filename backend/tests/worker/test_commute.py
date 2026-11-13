@@ -44,3 +44,13 @@ def test_compute_commutes_groups_by_departure_and_caches(db):
     db.commit()
     assert compute_commutes(db, g, l, now=now) == out and len(g.calls) == 2  # served from cache
     assert db.query(CommuteCache).count() == 4
+
+
+def test_home_place_gets_no_commute(db):
+    _place(db, "work", 24.71, 46.7)
+    _place(db, "home", 24.72, 46.71)
+    l = Listing(lat=24.8, lng=46.6); db.add(l); db.commit()
+    g = FakeGoogle()
+    out = compute_commutes(db, g, l, now=datetime(2026, 11, 12, 7, 0, tzinfo=UTC))
+    assert out == {"work": 10} and [len(c[1]) for c in g.calls] == [1]
+    assert db.query(CommuteCache).count() == 1

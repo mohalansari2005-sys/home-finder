@@ -1,4 +1,4 @@
-"""Real-model agent evals (15 cases). Manual: OPENAI_API_KEY=... pytest -m llm tests/agent -v. Skipped without a key."""
+"""Real-model agent evals (17 cases). Manual: OPENAI_API_KEY=... pytest -m llm tests/agent -v. Skipped without a key."""
 import os
 import re
 import uuid

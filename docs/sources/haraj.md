@@ -42,7 +42,7 @@ be inferred from age. Posts whose `status` is false, or that no longer carry a s
 | date | `postDate`, `updateDate` (unix seconds) |
 | tags | `tags` |
 | seller | `authorUsername`, `authorId`: **never requested.** `realEstateInfo` (REGA licence numbers) is never requested either. |
-| phone | Not exposed by the API at all. The page shows it after a "contact" click. Bodies sometimes contain a phone or the site's own mask text `( رقم الجوال يظهر عند الضغط على زر تواصل )`. We store `seller_phone = None`. |
+| phone | Not exposed by the API at all. The page shows it after a "contact" click. Bodies sometimes contain a phone or the site's own mask text `( رقم الجوال يظهر عند الضغط على زر تواصل )`. `seller_phone` is the first Saudi mobile found in the body/title by `parse_phone_from_text` (landlines, licence numbers, ad ids and prices are skipped), else None. |
 
 Body conventions seen: licensed posts end with a regulated block `معلومات العقار حسب الرخصة` (purpose, unit price, type, age,
 area, facing, rooms, plan and plot numbers, street width) and a Google Maps link `https://maps.google.com/?q=lat,lng`

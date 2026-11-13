@@ -140,6 +140,17 @@ LEARN_EVERY = 10
 NEXT_STATUS = {"bookmark": "bookmarked", "reject": "rejected", "unreject": "seen"}
 
 
+def enqueue_learn_if_due(s: Session) -> None:
+    """Queue a learn job once LEARN_EVERY learnable reactions have piled up since the last learn run.
+    Shared by every route that records a learnable reaction (react, visit ratings)."""
+    pref = prefs.get_or_create(s)
+    since = max(pref.learned_through_reaction_id, pref.learn_attempted_through_reaction_id)
+    fresh = s.scalar(select(func.count()).select_from(Reaction).where(
+        Reaction.id > since, Reaction.kind.in_(LEARN_KINDS)))
+    if fresh >= LEARN_EVERY:
+        jobs.enqueue(s, "learn", {}, dedupe_key="learn")
+
+
 @router.post("/listings/{listing_id}/react")
 def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
     l = s.get(Listing, listing_id)
@@ -150,12 +161,7 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
     s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code if reject else None,
                    note=body.note if reject else None))
     s.flush()
-    pref = prefs.get_or_create(s)
-    since = max(pref.learned_through_reaction_id, pref.learn_attempted_through_reaction_id)
-    fresh = s.scalar(select(func.count()).select_from(Reaction).where(
-        Reaction.id > since, Reaction.kind.in_(LEARN_KINDS)))
-    if fresh >= LEARN_EVERY:
-        jobs.enqueue(s, "learn", {}, dedupe_key="learn")
+    enqueue_learn_if_due(s)
     return {"family_status": l.family_status}
 
 

@@ -13,6 +13,12 @@ def test_places_upsert_invalidates_cache(db, family):
     assert family.get("/api/places").json() == [{"kind": "work", "name": "المكتب الجديد", "lat": 24.75, "lng": 46.7}]
 
 
+def test_places_accepts_home_without_commute_recompute(db, family):
+    r = family.put("/api/places", json=[{"kind": "home", "name": "المنزل الحالي", "lat": 24.7, "lng": 46.68}])
+    assert r.status_code == 200 and r.json()[0]["kind"] == "home"
+    assert db.query(Job).filter(Job.type == "recompute_commutes").count() == 0
+
+
 def test_places_rejects_unknown_kind(family):
     assert family.put("/api/places", json=[{"kind": "gym", "name": "x", "lat": 1, "lng": 1}]).status_code == 422
 

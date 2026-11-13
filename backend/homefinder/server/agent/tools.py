@@ -8,9 +8,13 @@ from homefinder import jobs, prefs
 from homefinder.models import Listing, WorkerStatus
 from homefinder.scoring import effective_targets, effective_weights
 from homefinder.server.agent import fallback_search
+from homefinder.server.routes import visits as visits_routes
 from homefinder.server.routes.listings import _photo_urls, _price_drops, card
 from homefinder.server.routes.suggestions import apply_suggestion, current_suggestions
 from homefinder.server.routes.settings import PrefsPatch, apply_prefs_patch
+from homefinder.server.visits.grouping import group_bookmarks
+from homefinder.server.visits.out import trip_out
+from homefinder.server.visits.planner import TripError, create_trip_from_request
 from homefinder.textnorm import normalize_district
 from homefinder.worker.scheduler import ENABLED_SOURCES
 
@@ -128,5 +132,45 @@ def make_tools(session_factory):
         except ValueError as e:
             return _j({"ok": False, "error": str(e)})
 
+    @tool
+    def suggest_visit_trip() -> str:
+        """يقترح أفضل 3 مجموعات من العقارات المحفوظة (حسب الحي) لزيارتها في رحلة واحدة."""
+        with session_factory() as s:
+            groups, no_coords = group_bookmarks(s, visits_routes.get_google())
+            top = groups[:3]
+            by_id = {l.id: l for l in s.scalars(select(Listing).where(
+                Listing.id.in_([i for g in top for i in g.listing_ids[:3]])))}
+            return _j({"groups": [
+                {"districts": g.districts, "count": g.count, "avg_score": g.avg_score, "listing_ids": g.listing_ids,
+                 "cards": _cards(s, [by_id[i] for i in g.listing_ids[:3]])} for g in top],
+                "without_location": len(no_coords)})
+
+    @tool
+    def create_visit_trip(listing_ids: list[int], date: str, start_time: str, origin_kind: str = "home",
+                          minutes_per_visit: int = 30) -> str:
+        """ينشئ رحلة زيارة مرتبة حسب أقصر مسار. date بصيغة YYYY-MM-DD وstart_time بصيغة HH:MM بتوقيت الرياض.
+        origin_kind: home | school | work | university. minutes_per_visit بين 15 و120."""
+        try:
+            if not 1 <= len(listing_ids) <= 15 or origin_kind not in ("home", "school", "work", "university"):
+                raise TripError("عدد العقارات أو نقطة الانطلاق غير صالحة")
+            if not 15 <= minutes_per_visit <= 120:
+                raise TripError("مدة الزيارة يجب أن تكون بين 15 و120 دقيقة")
+            try:
+                d, t = datetime.strptime(date, "%Y-%m-%d").date(), datetime.strptime(start_time, "%H:%M").time()
+            except ValueError as e:
+                raise TripError("التاريخ بصيغة YYYY-MM-DD والوقت بصيغة HH:MM") from e
+            with session_factory() as s:
+                trip = create_trip_from_request(s, visits_routes.get_google(), listing_ids=listing_ids, d=d, t=t,
+                                                origin_kind=origin_kind, minutes_per_visit=minutes_per_visit)
+                out = trip_out(s, trip)
+        except TripError as e:
+            return _j({"ok": False, "error": str(e)})
+        return _j({"ok": True, "trip_id": out["id"], "url": f"/visits/{out['id']}", "title": out["title"],
+                   "date": out["date"], "start_time": out["start_time"], "total_drive_min": out["total_drive_min"],
+                   "warnings": out["warnings"], "maps_url": out["maps_url"], "cards": [x["listing"] for x in out["stops"]],
+                   "stops": [{"position": x["position"], "title": x["listing"]["title"],
+                              "district": x["listing"]["district"], "eta_local": x["eta_local"],
+                              "etd_local": x["etd_local"], "drive_min": x["drive_min"]} for x in out["stops"]]})
+
     return [get_preferences, update_preferences, search_listings, get_listing, compare_listings, request_scrape,
-            get_filter_suggestions, apply_filter_suggestion]
+            get_filter_suggestions, apply_filter_suggestion, suggest_visit_trip, create_visit_trip]

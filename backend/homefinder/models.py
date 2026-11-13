@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Any
 
 from geoalchemy2 import Geography
-from sqlalchemy import (BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text,
-                        UniqueConstraint, func, text)
+from sqlalchemy import (BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text,
+                        Time, UniqueConstraint, func, text)
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -95,7 +95,7 @@ class Photo(Base):
 class Place(Base):
     __tablename__ = "places"
     id: Mapped[int] = mapped_column(primary_key=True)
-    kind: Mapped[str] = mapped_column(String(12), unique=True)  # school|work|university|airport
+    kind: Mapped[str] = mapped_column(String(12), unique=True)  # home|school|work|university|airport
     name: Mapped[str] = mapped_column(String(120))
     geom: Mapped[Any] = mapped_column(Geography("POINT", srid=4326))
     lat: Mapped[float | None] = mapped_column(Float)
@@ -198,3 +198,57 @@ class ChatThread(Base):
     title: Mapped[str] = mapped_column(String(80), default="", server_default="")
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class VisitTrip(Base):
+    __tablename__ = "visit_trips"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(160))
+    date: Mapped[date] = mapped_column(Date)  # Asia/Riyadh local day
+    start_time: Mapped[time] = mapped_column(Time)  # Asia/Riyadh local
+    origin_kind: Mapped[str] = mapped_column(String(12))  # home|school|work|university
+    origin_lat: Mapped[float] = mapped_column(Float)
+    origin_lng: Mapped[float] = mapped_column(Float)
+    minutes_per_visit: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10), default="planned", server_default="planned")  # planned|done|cancelled
+    warnings: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    total_drive_min: Mapped[int | None] = mapped_column(Integer)
+    skipped_no_location: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = _now()
+    stops: Mapped[list["VisitStop"]] = relationship(back_populates="trip", cascade="all, delete-orphan",
+                                                    order_by="VisitStop.position")
+
+
+class VisitStop(Base):
+    __tablename__ = "visit_stops"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trip_id: Mapped[int] = mapped_column(ForeignKey("visit_trips.id", ondelete="CASCADE"), index=True)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    eta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    etd: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    drive_min: Mapped[int | None] = mapped_column(Integer)
+    contact_status: Mapped[str] = mapped_column(String(16), default="not_contacted", server_default="not_contacted")
+    rating: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    flags: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))  # removed|price_changed|check_failed
+    old_price: Mapped[int | None] = mapped_column(BigInteger)  # price before the change that set "price_changed"
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    trip: Mapped[VisitTrip] = relationship(back_populates="stops")
+
+
+class VisitPhoto(Base):
+    """A photo the family took during a visit. Private: never under the public /photos path."""
+    __tablename__ = "visit_photos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stop_id: Mapped[int] = mapped_column(ForeignKey("visit_stops.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(Text)  # relative to visit_photos_dir, e.g. "7/<uuid>.jpg"
+
+
+class DistrictDriveCache(Base):
+    """Drive minutes between two district centroids (a < b, normalized names). minutes None = no route."""
+    __tablename__ = "district_drive_cache"
+    a: Mapped[str] = mapped_column(String(120), primary_key=True)
+    b: Mapped[str] = mapped_column(String(120), primary_key=True)
+    minutes: Mapped[int | None] = mapped_column(Integer)
+    computed_at: Mapped[datetime] = _now()

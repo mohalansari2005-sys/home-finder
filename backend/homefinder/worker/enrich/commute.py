@@ -30,7 +30,7 @@ def compute_commutes(s: Session, google, listing: Listing, now: datetime | None 
         return {}
     now = now or datetime.now(UTC)
     key = origin_key(listing.lat, listing.lng)
-    places = list(s.scalars(select(Place)))
+    places = list(s.scalars(select(Place).where(Place.kind != "home")))  # home is a trip origin only
     cached = {c.place_id: c.minutes for c in s.scalars(select(CommuteCache).where(CommuteCache.origin_key == key))}
     result = {p.kind: cached[p.id] for p in places if p.id in cached}
     missing = [p for p in places if p.id not in cached]

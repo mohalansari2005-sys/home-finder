@@ -53,3 +53,9 @@
   expect_tools: [update_preferences]
   expect_prefs: {hard_filters.price_max: 2500000}
   expect_prefs_cmp: ["weights.commute_university > 0.6"]
+- name: plan_saturday_visits
+  messages: ["نبي نزور البيوت المحفوظة يوم السبت العصر"]
+  expect_tools: [suggest_visit_trip, create_visit_trip]
+- name: best_district_to_visit
+  messages: ["وش أفضل حي نزوره؟"]
+  expect_tools: [suggest_visit_trip]
