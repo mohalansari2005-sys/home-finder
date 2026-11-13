@@ -92,3 +92,17 @@ def test_enrich_dedupe_failure_does_not_fail_the_job(db, monkeypatch):
     l = Listing(title="فيلا", description="x"); db.add(l); db.commit()
     out = enrich_listing(_deps(google=FakeGoogle()), l.id)
     assert "merged_into" not in out
+
+
+def test_enrich_retry_gives_up_after_five_attempts(db):
+    """M12: a permanently failing step (bad key, schema error) must not re-queue itself forever."""
+    from homefinder.models import Job
+    l = Listing(title="فيلا", description="فيلا للبيع"); db.add(l); db.commit()
+    bad = FakeLLM(exc=RuntimeError("bad schema"))
+    for attempt in range(0, 5):
+        enrich_listing(_deps(llm=bad, google=FakeGoogle()), l.id, attempt=attempt)
+        j = db.query(Job).filter_by(type="enrich_listing").one()
+        assert j.payload == {"listing_id": l.id, "attempt": attempt + 1}
+        db.delete(j); db.commit()
+    out = enrich_listing(_deps(llm=bad, google=FakeGoogle()), l.id, attempt=5)
+    assert out["requeued"] is False and db.query(Job).filter_by(type="enrich_listing").count() == 0

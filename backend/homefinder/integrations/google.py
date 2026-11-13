@@ -17,6 +17,12 @@ def _wp(p: tuple[float, float]) -> dict:
     return {"waypoint": {"location": {"latLng": {"latitude": p[0], "longitude": p[1]}}}}
 
 
+def _check(r: httpx.Response, what: str) -> None:
+    """raise_for_status() puts the request URL, and with it ?key=..., into the error text that the worker logs."""
+    if r.is_error:
+        raise RuntimeError(f"google {what}: HTTP {r.status_code}") from None
+
+
 class GoogleClient:
     def __init__(self, api_key: str, http: httpx.Client, spend: Callable[[float], None] | None = None,
                  reserve: float = 0.0):
@@ -26,7 +32,7 @@ class GoogleClient:
     def geocode(self, address: str) -> tuple[float, float] | None:
         self._spend(COST["geocode"])
         r = self._http.get(GEOCODE_URL, params={"address": address, "key": self._key, "language": "ar", "region": "sa"}, timeout=20)
-        r.raise_for_status()
+        _check(r, "geocode")
         data = r.json()
         if data.get("status") != "OK" or not data.get("results"):
             return None
@@ -40,7 +46,7 @@ class GoogleClient:
                 "routingPreference": "TRAFFIC_AWARE", "departureTime": departure.isoformat().replace("+00:00", "Z")}
         r = self._http.post(MATRIX_URL, json=body, timeout=30, headers={
             "X-Goog-Api-Key": self._key, "X-Goog-FieldMask": "originIndex,destinationIndex,duration,condition"})
-        r.raise_for_status()
+        _check(r, "matrix")
         out: list[int | None] = [None] * len(destinations)
         for el in r.json():
             if el.get("condition") == "ROUTE_EXISTS" and el.get("duration"):
@@ -60,7 +66,7 @@ class GoogleClient:
         r = self._http.post(ROUTES_URL, json=body, timeout=30, headers={
             "X-Goog-Api-Key": self._key,
             "X-Goog-FieldMask": "routes.optimizedIntermediateWaypointIndex,routes.legs.duration"})
-        r.raise_for_status()
+        _check(r, "routes")
         routes = r.json().get("routes") or []
         if not routes:
             return None

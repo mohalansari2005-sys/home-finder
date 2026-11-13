@@ -85,3 +85,12 @@ def test_enrichment_client_stops_at_80_percent_and_leaves_the_reserve_for_trips(
     with pytest.raises(usage.BudgetExceeded):
         make_google(http, reserve=0.2).geocode("x")
     assert make_google(http).geocode("x") is None  # the trip-planning client may still spend
+
+
+def test_google_http_errors_never_carry_the_api_key(settings_env):
+    """M12: httpx puts the request URL (with ?key=...) into its error text, and workers log errors."""
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={"error": "denied"})))
+    g = GoogleClient("SECRET-KEY-123", http, spend=lambda c: None)
+    with pytest.raises(Exception) as e:
+        g.geocode("الرياض")
+    assert "SECRET-KEY-123" not in str(e.value) and "403" in str(e.value)

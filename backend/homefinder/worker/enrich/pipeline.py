@@ -17,7 +17,10 @@ log = logging.getLogger(__name__)
 RETRY_DELAY = timedelta(hours=6)
 
 
-def enrich_listing(deps, listing_id: int) -> dict:
+MAX_RETRIES = 5
+
+
+def enrich_listing(deps, listing_id: int, attempt: int = 0) -> dict:
     requeue = False
     with deps.session_factory() as s:
         l = s.get(Listing, listing_id)
@@ -51,8 +54,11 @@ def enrich_listing(deps, listing_id: int) -> dict:
         urls = next((src.photo_urls for src in s.scalars(select(ListingSource).where(
             ListingSource.listing_id == listing_id)) if src.photo_urls), [])
         commutes = len(l.commutes or {})
+        if requeue and attempt >= MAX_RETRIES:
+            log.error("enrich %s: giving up after %d retries", listing_id, attempt)
+            requeue = False  # a permanently failing step (bad key, schema error) must not retry forever
         if requeue:
-            jobs.enqueue(s, "enrich_listing", {"listing_id": listing_id},
+            jobs.enqueue(s, "enrich_listing", {"listing_id": listing_id, "attempt": attempt + 1},
                          dedupe_key=f"enrich-retry:{listing_id}", delay=RETRY_DELAY)
     photos = 0
     if need_photos and urls:

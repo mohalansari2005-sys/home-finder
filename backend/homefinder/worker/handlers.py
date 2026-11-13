@@ -172,7 +172,7 @@ HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "precheck_trip": handle_precheck_trip,
     "recompute_commutes": handle_recompute_commutes,
     "fetch_missing_photos": handle_fetch_missing_photos,
-    "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
+    "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"], p.get("attempt", 0)),
 }
 
 
