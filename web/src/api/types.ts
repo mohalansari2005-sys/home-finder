@@ -7,13 +7,15 @@ export interface ListingCard {
   photo_url: string | null; score: number | null; commutes: Partial<Record<CommuteKind, number | null>>
   family_status: FamilyStatus; first_seen: string | null; lat: number | null; lng: number | null
   price_drop: { from: number; to: number; at: string } | null
+  /** 'active' | 'removed' (any other value is treated as normal) */
+  status: string
 }
 export interface ListingDetail extends ListingCard {
   description: string | null; livings: number | null; building_age_years: number | null; street_width_m: number | null
   facing: string | null; street_count: number | null; deed_type: string | null; has_maid_room: boolean | null
   has_driver_room: boolean | null; has_yard: boolean | null; has_elevator: boolean | null; geo_precision: string
   photos: string[]; sources: { source: string; url: string; seller_phone: string | null; seller_name: string | null }[]
-  price_history: { price: number; observed_at: string }[]; score_breakdown: ScoreBreakdown | null; status: string
+  price_history: { price: number; observed_at: string }[]; score_breakdown: ScoreBreakdown | null
   passes_filters: boolean; filter_reasons: string[]
 }
 export interface ScoreContribution { factor: string; value: number; weight: number; delta: number }

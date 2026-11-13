@@ -7,7 +7,7 @@ import { ListingCard } from './ListingCard'
 const base: T = {
   id: 1, title: 'فيلا درج داخلي', property_type: 'villa', price: 1850000, district: 'النرجس', bedrooms: 5,
   bathrooms: 4, built_area_m2: 420, land_area_m2: 312, photo_url: null, score: 82,
-  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null,
+  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null, status: 'active',
 }
 
 it('renders price, district, score and commute chips with missing as dash', () => {
@@ -38,4 +38,25 @@ it('bookmarked card shows saved state', () => {
 it('uses Arabic plural forms for rooms', () => {
   render(<ListingCard listing={{ ...base, bedrooms: 2 }} onOpen={() => {}} onReact={() => {}} />)
   expect(screen.getByText('غرفتان')).toBeInTheDocument()
+})
+
+it('shows a muted removed chip only when the listing was removed', () => {
+  const { rerender } = render(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByText('الإعلان محذوف')).toBeNull()
+  rerender(<ListingCard listing={{ ...base, status: 'removed' }} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.getByText('الإعلان محذوف')).toBeInTheDocument()
+  rerender(<ListingCard listing={{ ...base, status: 'stale' }} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByText('الإعلان محذوف')).toBeNull()
+})
+
+it('shows the price-drop badge with the amount and the old price struck through', () => {
+  const drop = { from: 2000000, to: 1850000, at: '2026-11-01T10:00:00Z' }
+  const { rerender } = render(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByTestId('price-drop')).toBeNull()
+  expect(document.querySelector('del')).toBeNull()
+  rerender(<ListingCard listing={{ ...base, price_drop: drop }} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.getByTestId('price-drop')).toHaveTextContent('انخفض 150,000 ر.س')
+  expect(screen.getByTestId('price-drop').querySelector('bdi')).toHaveTextContent('150,000')
+  expect(document.querySelector('del')).toHaveTextContent('2,000,000 ر.س')
+  expect(screen.getByText('1,850,000 ر.س')).toBeInTheDocument()
 })
