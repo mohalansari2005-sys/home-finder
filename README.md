@@ -2,7 +2,7 @@
 
 A private, Arabic-first web app that helps one family find a home to **buy in Riyadh**.
 
-It collects listings from Aqar (and Haraj, in progress), scores each one 0–100 against the family's needs with a short explanation, and shows every listing with its photos, a map, and rush-hour drive times to the places that matter: one school, one workplace, one university and King Khalid International Airport. It learns from what the family saves and rejects, and it plans in-person visit trips that group liked homes by district.
+It collects listings from Aqar and Haraj, scores each one 0–100 against the family's needs with a short explanation, and shows every listing with its photos, a map, and rush-hour drive times to the places that matter: one school, one workplace, one university and King Khalid International Airport. It learns from what the family saves and rejects, and it plans in-person visit trips that group liked homes by district.
 
 The app is right-to-left Arabic throughout and is installable as a PWA. It has layouts for phone, iPad and desktop.
 
