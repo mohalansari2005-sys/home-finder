@@ -34,6 +34,7 @@ services:
     volumes:
       - ../web/dist:/usr/share/nginx/html:ro
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/security-headers.conf:/etc/nginx/snippets/security-headers.conf:ro
       - photos:/data/photos:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on: [api]
