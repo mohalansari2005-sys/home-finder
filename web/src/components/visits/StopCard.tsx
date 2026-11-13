@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Camera, Car, Home, MessageCircle, Phone, TriangleAlert } from 'lucide-react'
+import { Camera, Car, ExternalLink, Home, MessageCircle, Phone, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
 import type { ContactStatus, StopPatch, TripStop } from '../../api/types'
 import { ScoreSeal } from '../ScoreSeal'
@@ -99,6 +99,11 @@ export function StopCard({ stop, onPatch, onUpload, active }: Props) {
             ))}
           </ToggleGroup>
 
+          {!stop.whatsapp_url && (
+            stop.source_url
+              ? <a href={stop.source_url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><ExternalLink aria-hidden strokeWidth={1.75} />فتح الإعلان</a>
+              : <Link to={`/listing/${l.id}`} className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><ExternalLink aria-hidden strokeWidth={1.75} />فتح الإعلان</Link>
+          )}
           {(stop.whatsapp_url || stop.phone) && (
             <div className="flex gap-2">
               {stop.whatsapp_url && (

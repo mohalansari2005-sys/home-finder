@@ -33,7 +33,7 @@ export function GroupCard({ group, onPlan }: { group: VisitGroup; onPlan: (g: Vi
         ))}
       </div>
       <Button size="lg" className="h-11 rounded-xl" onClick={() => onPlan(group)}>
-        <CalendarPlus aria-hidden />خطط زيارة
+        <CalendarPlus aria-hidden />تخطيط زيارة
       </Button>
     </li>
   )

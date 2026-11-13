@@ -70,6 +70,8 @@ export interface TripStop {
   /** subset of "removed" | "price_changed"; unknown values are ignored */
   flags: string[]; old_price?: number | null
   whatsapp_url: string | null; phone: string | null; photos: string[]
+  /** the listing's source-site URL when the server provides it (not in the original contract) */
+  source_url?: string | null
 }
 export interface Trip {
   id: number; title: string; date: string; start_time: string; origin_kind: TripOrigin; minutes_per_visit: number

@@ -85,7 +85,7 @@ export function TripPage() {
   if (!trip) return <Skeletons />
 
   const warnings = tripWarnings(trip)
-  const pending = warnings.some((w) => w.code === 'precheck_pending')
+  const pending = warnings.some((w) => w.code === 'precheck_pending') && !q.stalled
   const districts = [...new Set(trip.stops.map((s) => s.listing.district).filter((d): d is string => !!d))]
   const origin = places.data?.find((p) => p.kind === trip.origin_kind)
   const select = (stopId: number) => {
@@ -94,7 +94,7 @@ export function TripPage() {
     document.getElementById(`stop-${stopId}`)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
   }
   const onPrecheck = () => precheck.mutate(undefined, {
-    onSuccess: () => toast('سيتم التحقق عند اتصال جهاز التحديث'),
+    onSuccess: () => { q.restart(); toast('سيتم التحقق عند اتصال جهاز التحديث') },
     onError: () => toast.error('تعذّر بدء التحقق. حاولوا مرة أخرى.'),
   })
 
@@ -128,6 +128,12 @@ export function TripPage() {
             </div>
           )}
 
+          {q.stalled && (
+            <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <span>لم يكتمل التحقق بعد</span>
+              <Button variant="outline" size="sm" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>تحقق الآن</Button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <a href={trip.maps_url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ size: 'lg' }), 'h-11 rounded-xl')}>
               <Navigation aria-hidden strokeWidth={1.75} />افتح في خرائط Google

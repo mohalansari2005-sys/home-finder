@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ApiError, api } from './client'
@@ -128,13 +129,25 @@ export const useTrips = () => useQuery({ queryKey: ['trips'], queryFn: () => api
 
 /** The server runs the listing re-check in the background; poll every 30 s while it reports precheck_pending. */
 export const PRECHECK_POLL_MS = 30_000
-export const useTrip = (id: number | null) =>
-  useQuery({
+export const PRECHECK_MAX_MS = 10 * 60_000
+export function useTrip(id: number | null) {
+  const [stalled, setStalled] = useState(false)
+  const [epoch, setEpoch] = useState(0)
+  const q = useQuery({
     queryKey: ['trip', id],
     queryFn: () => api<Trip>(`/api/visits/trips/${id}`),
     enabled: id != null,
-    refetchInterval: (q) => (q.state.data?.warnings.includes('precheck_pending') ? PRECHECK_POLL_MS : false),
+    refetchInterval: (query) => (query.state.data?.warnings.includes('precheck_pending') && !stalled ? PRECHECK_POLL_MS : false),
   })
+  const pending = !!q.data?.warnings.includes('precheck_pending')
+  useEffect(() => {
+    if (!pending) { setStalled(false); return }
+    const t = setTimeout(() => setStalled(true), PRECHECK_MAX_MS)
+    return () => clearTimeout(t)
+  }, [pending, epoch])
+  /** Give up polling after 10 minutes; `restart()` (after another precheck) resumes it. */
+  return Object.assign(q, { stalled: stalled && pending, restart: () => { setStalled(false); setEpoch((e) => e + 1) } })
+}
 
 function useTripWrite<V>(id: number, fn: (v: V) => Promise<Trip | void>, invalidateOnly = false) {
   const qc = useQueryClient()

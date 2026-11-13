@@ -13,7 +13,7 @@ test('plan a trip, mark visited, rate, notes and photo', async ({ page }, info) 
   await expect(page.getByText('لا يمكن إضافتها لمسار لعدم توفر موقع')).toBeVisible()
   await expect(page.getByText('لا توجد رحلات بعد')).toBeVisible()
 
-  await page.getByRole('button', { name: 'خطط زيارة' }).click()
+  await page.getByRole('button', { name: 'تخطيط زيارة', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('checkbox')).toHaveCount(2)
   await expect(dialog.getByRole('checkbox').first()).toBeChecked()
@@ -71,7 +71,7 @@ test('price change and removed warnings, precheck and polling state', async ({ p
   await expect(page.getByText('جارٍ التحقق من الإعلانات')).toBeVisible()
 })
 
-test('contact status is a radio group', async ({ page }) => {
+test('contact status is a radio group that wraps without overflow or truncation', async ({ page }, info) => {
   await mockApi(page, { loggedIn: true, places: HOME, trips: true })
   await page.goto('/visits/1')
   const group = page.locator('#stop-10').getByRole('radiogroup', { name: 'حالة التواصل' })
@@ -80,12 +80,17 @@ test('contact status is a radio group', async ({ page }) => {
   await expect(group.getByRole('radio', { name: 'مؤكد' })).toBeChecked()
   await expect(group.getByRole('radio', { name: 'لم نتواصل' })).not.toBeChecked()
   await expect(page.locator('#stop-10').getByRole('button', { name: '1 من 5' })).toHaveCount(0)
+  const fit = await group.evaluate((g) => ({ box: g.scrollWidth <= g.clientWidth, items: [...g.querySelectorAll('[role=radio]')].every((i) => i.scrollWidth <= i.clientWidth) }))
+  expect(fit).toEqual({ box: true, items: true })
+  if (info.project.name === 'phone') await page.locator('#stop-10').screenshot({ path: 'test-results/screens/m5-phone-contact-status.png' })
+  // stops without whatsapp offer the listing instead
+  await expect(page.locator('#stop-11').getByRole('link', { name: 'فتح الإعلان' })).toBeVisible()
 })
 
 test('server 422 shows inline in the builder; missing home links to settings', async ({ page }) => {
   await mockApi(page, { loggedIn: true, places: HOME, tripError: 'حدد موقع المنزل في الإعدادات أولاً' })
   await page.goto('/visits')
-  await page.getByRole('button', { name: 'خطط زيارة' }).click()
+  await page.getByRole('button', { name: 'تخطيط زيارة', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'إنشاء الرحلة' }).click()
   await expect(page.getByRole('alert')).toHaveText('حدد موقع المنزل في الإعدادات أولاً')
   await expect(page).toHaveURL(/\/visits$/)
@@ -94,7 +99,7 @@ test('server 422 shows inline in the builder; missing home links to settings', a
 test('builder without a home place offers the settings link', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await page.goto('/visits')
-  await page.getByRole('button', { name: 'خطط زيارة' }).click()
+  await page.getByRole('button', { name: 'تخطيط زيارة', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('link', { name: 'تحديده من الإعدادات' })).toHaveAttribute('href', '/settings')
   await expect(dialog.getByRole('button', { name: 'إنشاء الرحلة' })).toBeDisabled()

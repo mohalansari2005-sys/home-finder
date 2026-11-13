@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { expect, it, vi } from 'vitest'
@@ -28,6 +28,17 @@ it('shows 12-hour times as number islands, flags, whatsapp, and updates status v
   await userEvent.click(screen.getByRole('radio', { name: 'تمت الزيارة' }))
   expect(onPatch).toHaveBeenCalledWith({ contact_status: 'visited' })
   expect(screen.queryByRole('button', { name: '1 من 5' })).toBeNull() // rating appears only once visited
+})
+
+it('without whatsapp offers the listing source link, else the in-app detail page', () => {
+  view({ ...stop, whatsapp_url: null, phone: null, source_url: 'https://sa.aqar.fm/1' })
+  expect(screen.getByRole('link', { name: 'فتح الإعلان' })).toHaveAttribute('href', 'https://sa.aqar.fm/1')
+  cleanup()
+  view({ ...stop, whatsapp_url: null, phone: null })
+  expect(screen.getByRole('link', { name: 'فتح الإعلان' })).toHaveAttribute('href', '/listing/1')
+  cleanup()
+  view(stop)
+  expect(screen.queryByRole('link', { name: 'فتح الإعلان' })).toBeNull()
 })
 
 it('hides whatsapp without a url and marks removed listings', () => {
