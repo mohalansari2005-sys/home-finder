@@ -1,4 +1,6 @@
-import { Briefcase, GraduationCap, Plane, School, type LucideIcon } from 'lucide-react'
+import { Briefcase, GraduationCap, House, Plane, School, type LucideIcon } from 'lucide-react'
+
+import type { PlaceKind } from '../api/types'
 
 // All number/date formatting goes through here (see docs/arabic-ui-rules.md).
 // Never call Intl with bare 'ar' / 'ar-SA': digits, percent sign and calendar vary by runtime.
@@ -54,6 +56,14 @@ export const COMMUTE_ICONS: { kind: 'school' | 'work' | 'university' | 'airport'
   { kind: 'work', Icon: Briefcase, label: 'العمل' },
   { kind: 'university', Icon: GraduationCap, label: 'الجامعة' },
   { kind: 'airport', Icon: Plane, label: 'المطار' },
+]
+export const PLACE_LABEL_AR: Record<PlaceKind, string> = {
+  home: 'المنزل الحالي', school: 'المدرسة', work: 'العمل', university: 'الجامعة', airport: 'المطار',
+}
+/** Saved places in display order; the current home leads (it is the trip starting point, never a commute target). */
+export const PLACE_ICONS: { kind: PlaceKind; Icon: LucideIcon; label: string }[] = [
+  { kind: 'home', Icon: House, label: PLACE_LABEL_AR.home },
+  ...COMMUTE_ICONS,
 ]
 export const FACING_AR: Record<string, string> = {
   north: 'شمال', south: 'جنوب', east: 'شرق', west: 'غرب',

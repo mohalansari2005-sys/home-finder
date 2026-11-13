@@ -3,19 +3,19 @@ import { Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { errorDetail } from '../../api/client'
 import { usePlaces, useSavePlaces } from '../../api/hooks'
-import type { CommuteKind, Place } from '../../api/types'
+import type { Place, PlaceKind } from '../../api/types'
 import { MapPicker, type LatLng } from '../../components/MapPicker'
-import { COMMUTE_ICONS } from '../../lib/format'
+import { PLACE_ICONS } from '../../lib/format'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 
-type Draft = Record<CommuteKind, { name: string; at: LatLng | null }>
+type Draft = Record<PlaceKind, { name: string; at: LatLng | null }>
 
 function toDraft(places: Place[]): Draft {
-  const d = Object.fromEntries(COMMUTE_ICONS.map((c) => [c.kind, { name: '', at: null }])) as Draft
+  const d = Object.fromEntries(PLACE_ICONS.map((c) => [c.kind, { name: '', at: null }])) as Draft
   for (const p of places) d[p.kind] = { name: p.name, at: { lat: p.lat, lng: p.lng } }
   return d
 }
@@ -27,7 +27,7 @@ function PlacesForm({ places }: { places: Place[] }) {
   const save = useSavePlaces()
 
   const submit = () => {
-    const body = COMMUTE_ICONS.flatMap(({ kind }) => {
+    const body = PLACE_ICONS.flatMap(({ kind }) => {
       const d = draft[kind]
       return d.name.trim() && d.at ? [{ kind, name: d.name.trim(), lat: d.at.lat, lng: d.at.lng }] : []
     })
@@ -40,7 +40,7 @@ function PlacesForm({ places }: { places: Place[] }) {
   return (
     <CardContent className="space-y-6">
       <ul className="space-y-6">
-        {COMMUTE_ICONS.map(({ kind, Icon, label }) => (
+        {PLACE_ICONS.map(({ kind, Icon, label }) => (
           <li key={kind} data-testid={`place-${kind}`} className="space-y-3 border-t pt-4 first:border-t-0 first:pt-0">
             <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl bg-muted"><Icon className="size-5" strokeWidth={1.75} aria-hidden /></span>

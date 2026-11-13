@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatYears, pluralAr, toDate } from './format'
+import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatYears, pluralAr, PLACE_LABEL_AR, toDate } from './format'
 
 describe('format', () => {
   it('formats price with western digits and riyal suffix', () => {
@@ -78,5 +78,13 @@ describe('formatRelative', () => {
   })
   it('falls back to a date after a month', () => {
     expect(formatRelative(ago(45 * DAY), now)).toMatch(/2026/)
+  })
+})
+
+describe('PLACE_LABEL_AR', () => {
+  it('labels every place kind including the current home', () => {
+    expect(PLACE_LABEL_AR.home).toBe('المنزل الحالي')
+    expect(PLACE_LABEL_AR.school).toBe('المدرسة')
+    expect(Object.keys(PLACE_LABEL_AR).sort()).toEqual(['airport', 'home', 'school', 'university', 'work'])
   })
 })

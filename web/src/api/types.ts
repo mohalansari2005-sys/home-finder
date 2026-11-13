@@ -25,7 +25,8 @@ export interface MapPoint {
   id: number; lat: number; lng: number; price: number | null; score: number | null; family_status: FamilyStatus
   title: string | null; district: string | null; photo_url: string | null
 }
-export interface Place { kind: CommuteKind; name: string; lat: number; lng: number }
+export type PlaceKind = CommuteKind | 'home'
+export interface Place { kind: PlaceKind; name: string; lat: number; lng: number }
 export interface HardFilters {
   city?: string; property_types?: string[]; districts?: string[]; price_max?: number | null; min_bedrooms?: number | null
   max_commute?: Partial<Record<CommuteKind, number>>; building_age_max?: number | null; street_width_min?: number | null
