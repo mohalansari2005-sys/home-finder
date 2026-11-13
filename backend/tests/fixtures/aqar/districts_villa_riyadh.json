@@ -1,0 +1,728 @@
+{
+ "data": {
+  "Web": {
+   "districts": [
+    {
+     "name": "حي المهدية",
+     "district_id": 588,
+     "count": 2058
+    },
+    {
+     "name": "حي النرجس",
+     "district_id": 600,
+     "count": 1506
+    },
+    {
+     "name": "حي الرمال",
+     "district_id": 446,
+     "count": 1212
+    },
+    {
+     "name": "حي العارض",
+     "district_id": 494,
+     "count": 1150
+    },
+    {
+     "name": "حي طويق",
+     "district_id": 682,
+     "count": 837
+    },
+    {
+     "name": "حي الجنادرية",
+     "district_id": 410,
+     "count": 621
+    },
+    {
+     "name": "حي المونسية",
+     "district_id": 590,
+     "count": 449
+    },
+    {
+     "name": "حي ظهرة لبن",
+     "district_id": 688,
+     "count": 364
+    },
+    {
+     "name": "حي الشرق",
+     "district_id": 476,
+     "count": 348
+    },
+    {
+     "name": "حي الياسمين",
+     "district_id": 632,
+     "count": 305
+    },
+    {
+     "name": "حي عكاظ",
+     "district_id": 698,
+     "count": 291
+    },
+    {
+     "name": "حي الملقا",
+     "district_id": 570,
+     "count": 285
+    },
+    {
+     "name": "حي القيروان",
+     "district_id": 536,
+     "count": 269
+    },
+    {
+     "name": "حي اليرموك",
+     "district_id": 634,
+     "count": 269
+    },
+    {
+     "name": "حي طيبة",
+     "district_id": 684,
+     "count": 261
+    },
+    {
+     "name": "حي بدر",
+     "district_id": 648,
+     "count": 255
+    },
+    {
+     "name": "حي الخليج",
+     "district_id": 422,
+     "count": 226
+    },
+    {
+     "name": "حي النظيم",
+     "district_id": 608,
+     "count": 221
+    },
+    {
+     "name": "حي العريجاء الغربية",
+     "district_id": 498,
+     "count": 210
+    },
+    {
+     "name": "حي النهضة",
+     "district_id": 614,
+     "count": 192
+    },
+    {
+     "name": "حي الصفا",
+     "district_id": 488,
+     "count": 171
+    },
+    {
+     "name": "حي القادسية",
+     "district_id": 530,
+     "count": 165
+    },
+    {
+     "name": "حي المعيزلة",
+     "district_id": 564,
+     "count": 163
+    },
+    {
+     "name": "حي الملك فيصل",
+     "district_id": 578,
+     "count": 149
+    },
+    {
+     "name": "حي اشبيلية",
+     "district_id": 390,
+     "count": 147
+    },
+    {
+     "name": "حي ضاحية نمار",
+     "district_id": 680,
+     "count": 132
+    },
+    {
+     "name": "حي الفاروق",
+     "district_id": 520,
+     "count": 128
+    },
+    {
+     "name": "حي قرطبة",
+     "district_id": 706,
+     "count": 128
+    },
+    {
+     "name": "حي النسيم الغربي",
+     "district_id": 606,
+     "count": 126
+    },
+    {
+     "name": "حي الصحافة",
+     "district_id": 486,
+     "count": 124
+    },
+    {
+     "name": "حي الدار البيضاء",
+     "district_id": 424,
+     "count": 104
+    },
+    {
+     "name": "حي ظهرة نمار",
+     "district_id": 690,
+     "count": 101
+    },
+    {
+     "name": "حي سدرة",
+     "district_id": 712,
+     "count": 101
+    },
+    {
+     "name": "حي الحزم",
+     "district_id": 414,
+     "count": 98
+    },
+    {
+     "name": "حي جامعة الأميرة نورة",
+     "district_id": 656,
+     "count": 94
+    },
+    {
+     "name": "حي السويدي",
+     "district_id": 470,
+     "count": 91
+    },
+    {
+     "name": "حي الزهرة",
+     "district_id": 458,
+     "count": 89
+    },
+    {
+     "name": "حي العريجاء الوسطى",
+     "district_id": 500,
+     "count": 89
+    },
+    {
+     "name": "حي عرقة",
+     "district_id": 694,
+     "count": 86
+    },
+    {
+     "name": "حي الاندلس",
+     "district_id": 396,
+     "count": 83
+    },
+    {
+     "name": "حي الروضة",
+     "district_id": 452,
+     "count": 81
+    },
+    {
+     "name": "حي الشفا",
+     "district_id": 478,
+     "count": 81
+    },
+    {
+     "name": "حي الربيع",
+     "district_id": 440,
+     "count": 80
+    },
+    {
+     "name": "حي ديراب",
+     "district_id": 668,
+     "count": 77
+    },
+    {
+     "name": "حي العقيق",
+     "district_id": 504,
+     "count": 71
+    },
+    {
+     "name": "حي السعادة",
+     "district_id": 460,
+     "count": 69
+    },
+    {
+     "name": "حي العليا",
+     "district_id": 506,
+     "count": 68
+    },
+    {
+     "name": "حي المصيف",
+     "district_id": 556,
+     "count": 67
+    },
+    {
+     "name": "حي التعاون",
+     "district_id": 404,
+     "count": 64
+    },
+    {
+     "name": "حي العزيزية",
+     "district_id": 502,
+     "count": 64
+    },
+    {
+     "name": "حي الوادي",
+     "district_id": 622,
+     "count": 64
+    },
+    {
+     "name": "حي الربوة",
+     "district_id": 438,
+     "count": 63
+    },
+    {
+     "name": "حي السويدي الغربي",
+     "district_id": 472,
+     "count": 63
+    },
+    {
+     "name": "حي بنبان",
+     "district_id": 650,
+     "count": 63
+    },
+    {
+     "name": "حي الحمراء",
+     "district_id": 416,
+     "count": 62
+    },
+    {
+     "name": "حي غرناطة",
+     "district_id": 704,
+     "count": 62
+    },
+    {
+     "name": "حي حطين",
+     "district_id": 664,
+     "count": 61
+    },
+    {
+     "name": "حي الفلاح",
+     "district_id": 522,
+     "count": 53
+    },
+    {
+     "name": "حي الفيحاء",
+     "district_id": 526,
+     "count": 51
+    },
+    {
+     "name": "حي النخيل",
+     "district_id": 596,
+     "count": 51
+    },
+    {
+     "name": "حي الملز",
+     "district_id": 568,
+     "count": 50
+    },
+    {
+     "name": "حي الندى",
+     "district_id": 598,
+     "count": 50
+    },
+    {
+     "name": "حي ظهرة البديعة",
+     "district_id": 686,
+     "count": 48
+    },
+    {
+     "name": "حي الروابي",
+     "district_id": 450,
+     "count": 46
+    },
+    {
+     "name": "حي السليمانية",
+     "district_id": 468,
+     "count": 46
+    },
+    {
+     "name": "حي شبرا",
+     "district_id": 674,
+     "count": 46
+    },
+    {
+     "name": "حي الازدهار",
+     "district_id": 392,
+     "count": 45
+    },
+    {
+     "name": "حي النفل",
+     "district_id": 610,
+     "count": 41
+    },
+    {
+     "name": "حي الدريهمية",
+     "district_id": 428,
+     "count": 40
+    },
+    {
+     "name": "حي القدس",
+     "district_id": 532,
+     "count": 39
+    },
+    {
+     "name": "حي ام الحمام الغربي",
+     "district_id": 640,
+     "count": 39
+    },
+    {
+     "name": "حي المحمدية",
+     "district_id": 538,
+     "count": 36
+    },
+    {
+     "name": "حي لبن",
+     "district_id": 708,
+     "count": 36
+    },
+    {
+     "name": "حي الجزيرة",
+     "district_id": 408,
+     "count": 34
+    },
+    {
+     "name": "حي الشهداء",
+     "district_id": 482,
+     "count": 34
+    },
+    {
+     "name": "حي الريان",
+     "district_id": 454,
+     "count": 33
+    },
+    {
+     "name": "حي المروج",
+     "district_id": 548,
+     "count": 33
+    },
+    {
+     "name": "حي جرير",
+     "district_id": 662,
+     "count": 32
+    },
+    {
+     "name": "حي الملك فهد",
+     "district_id": 576,
+     "count": 30
+    },
+    {
+     "name": "حي النسيم الشرقي",
+     "district_id": 604,
+     "count": 30
+    },
+    {
+     "name": "حي السلام",
+     "district_id": 464,
+     "count": 28
+    },
+    {
+     "name": "حي المنار",
+     "district_id": 582,
+     "count": 27
+    },
+    {
+     "name": "حي النزهة",
+     "district_id": 602,
+     "count": 25
+    },
+    {
+     "name": "حي سلطانة",
+     "district_id": 672,
+     "count": 25
+    },
+    {
+     "name": "حي الورود",
+     "district_id": 624,
+     "count": 24
+    },
+    {
+     "name": "حي المغرزات",
+     "district_id": 566,
+     "count": 23
+    },
+    {
+     "name": "حي الواحة",
+     "district_id": 620,
+     "count": 23
+    },
+    {
+     "name": "حي الغدير",
+     "district_id": 514,
+     "count": 22
+    },
+    {
+     "name": "حي البديعة",
+     "district_id": 398,
+     "count": 21
+    },
+    {
+     "name": "حي المرسلات",
+     "district_id": 544,
+     "count": 21
+    },
+    {
+     "name": "حي نمار",
+     "district_id": 718,
+     "count": 21
+    },
+    {
+     "name": "حي الرفيعة",
+     "district_id": 444,
+     "count": 17
+    },
+    {
+     "name": "حي صلاح الدين",
+     "district_id": 676,
+     "count": 17
+    },
+    {
+     "name": "حي الخزامى",
+     "district_id": 420,
+     "count": 16
+    },
+    {
+     "name": "حي عريض",
+     "district_id": 696,
+     "count": 16
+    },
+    {
+     "name": "حي المروة",
+     "district_id": 546,
+     "count": 15
+    },
+    {
+     "name": "حي الرائد",
+     "district_id": 436,
+     "count": 13
+    },
+    {
+     "name": "حي الرحمانية",
+     "district_id": 442,
+     "count": 12
+    },
+    {
+     "name": "حي الملك عبدالله",
+     "district_id": 574,
+     "count": 12
+    },
+    {
+     "name": "حي عليشة",
+     "district_id": 700,
+     "count": 12
+    },
+    {
+     "name": "حي الشرفية",
+     "district_id": 474,
+     "count": 11
+    },
+    {
+     "name": "حي المنصورة",
+     "district_id": 584,
+     "count": 11
+    },
+    {
+     "name": "حي ام الحمام الشرقي",
+     "district_id": 638,
+     "count": 11
+    },
+    {
+     "name": "حي الهدا",
+     "district_id": 618,
+     "count": 10
+    },
+    {
+     "name": "حي اليمامة",
+     "district_id": 636,
+     "count": 10
+    },
+    {
+     "name": "حي أحد",
+     "district_id": 646,
+     "count": 10
+    },
+    {
+     "name": "حي الضباط",
+     "district_id": 492,
+     "count": 9
+    },
+    {
+     "name": "حي الغنامية",
+     "district_id": 516,
+     "count": 9
+    },
+    {
+     "name": "حي المربع",
+     "district_id": 542,
+     "count": 9
+    },
+    {
+     "name": "حي الزهراء",
+     "district_id": 456,
+     "count": 7
+    },
+    {
+     "name": "حي العود",
+     "district_id": 512,
+     "count": 7
+    },
+    {
+     "name": "حي الفاخرية",
+     "district_id": 518,
+     "count": 7
+    },
+    {
+     "name": "حي الجرادية",
+     "district_id": 406,
+     "count": 6
+    },
+    {
+     "name": "حي الشميسي",
+     "district_id": 480,
+     "count": 6
+    },
+    {
+     "name": "حي المعذر الشمالي",
+     "district_id": 560,
+     "count": 6
+    },
+    {
+     "name": "حي منفوحة الجديدة",
+     "district_id": 716,
+     "count": 6
+    },
+    {
+     "name": "حي الوشام",
+     "district_id": 630,
+     "count": 5
+    },
+    {
+     "name": "حي البرية",
+     "district_id": 400,
+     "count": 4
+    },
+    {
+     "name": "حي الحائر",
+     "district_id": 412,
+     "count": 4
+    },
+    {
+     "name": "حي الخالدية",
+     "district_id": 418,
+     "count": 4
+    },
+    {
+     "name": "حي النموذجية",
+     "district_id": 612,
+     "count": 4
+    },
+    {
+     "name": "حي الصالحية",
+     "district_id": 484,
+     "count": 3
+    },
+    {
+     "name": "حي العريجاء",
+     "district_id": 496,
+     "count": 3
+    },
+    {
+     "name": "حي المدينة الصناعية الجديدة",
+     "district_id": 540,
+     "count": 3
+    },
+    {
+     "name": "حي الملك عبدالعزيز",
+     "district_id": 572,
+     "count": 3
+    },
+    {
+     "name": "حي الاسكان",
+     "district_id": 394,
+     "count": 2
+    },
+    {
+     "name": "حي الصناعية",
+     "district_id": 490,
+     "count": 2
+    },
+    {
+     "name": "حي العمل",
+     "district_id": 510,
+     "count": 2
+    },
+    {
+     "name": "حي الفوطة",
+     "district_id": 524,
+     "count": 2
+    },
+    {
+     "name": "حي الفيصلية",
+     "district_id": 528,
+     "count": 2
+    },
+    {
+     "name": "حي الوزارات",
+     "district_id": 626,
+     "count": 2
+    },
+    {
+     "name": "حي ثليم",
+     "district_id": 652,
+     "count": 2
+    },
+    {
+     "name": "حي غبيرة",
+     "district_id": 702,
+     "count": 2
+    },
+    {
+     "name": "حي منفوحة",
+     "district_id": 714,
+     "count": 2
+    },
+    {
+     "name": "حي هيت",
+     "district_id": 720,
+     "count": 2
+    },
+    {
+     "name": "حي الديرة",
+     "district_id": 434,
+     "count": 1
+    },
+    {
+     "name": "حي الرماية",
+     "district_id": 448,
+     "count": 1
+    },
+    {
+     "name": "حي المصانع",
+     "district_id": 552,
+     "count": 1
+    },
+    {
+     "name": "حي المناخ",
+     "district_id": 580,
+     "count": 1
+    },
+    {
+     "name": "حي المؤتمرات",
+     "district_id": 592,
+     "count": 1
+    },
+    {
+     "name": "حي الناصرية",
+     "district_id": 594,
+     "count": 1
+    },
+    {
+     "name": "حي خشم العان",
+     "district_id": 666,
+     "count": 1
+    },
+    {
+     "name": "حي سكيرينة",
+     "district_id": 670,
+     "count": 1
+    },
+    {
+     "name": "حي عتيقة",
+     "district_id": 692,
+     "count": 1
+    }
+   ]
+  }
+ }
+}
