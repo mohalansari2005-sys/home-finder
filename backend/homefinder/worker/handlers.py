@@ -76,7 +76,9 @@ def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
         return {"skipped": "no google key"}
     n = 0
     with deps.session_factory() as s:
-        ids = list(s.scalars(select(Listing.id).where(Listing.lat.is_not(None), Listing.merged_into_id.is_(None))))
+        ids = list(s.scalars(select(Listing.id).where(
+            Listing.lat.is_not(None), Listing.merged_into_id.is_(None), Listing.status == "active",
+            Listing.family_status != "rejected")))  # removed/rejected listings are never shown: don't pay to route them
     for lid in ids:
         with deps.session_factory() as s:
             l = s.get(Listing, lid)

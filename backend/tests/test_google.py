@@ -2,6 +2,7 @@ import json
 from datetime import datetime, UTC
 
 import httpx
+import pytest
 
 from homefinder.integrations.google import GoogleClient
 
@@ -71,3 +72,16 @@ def test_optimize_no_routes_returns_none_and_missing_leg_is_none():
     assert g.optimize_route((0, 0), [(1, 1)], datetime(2026, 11, 21, tzinfo=UTC)) is None
     g = client(lambda req: httpx.Response(200, json={"routes": [{"legs": [{"duration": "120s"}, {}]}]}))
     assert g.optimize_route((0, 0), [(1, 1)], datetime(2026, 11, 21, tzinfo=UTC)) == {"order": [0], "leg_minutes": [2, None]}
+
+
+def test_enrichment_client_stops_at_80_percent_and_leaves_the_reserve_for_trips(db, settings_env):
+    """I11: bulk enrichment must not be able to use the last 20% of the monthly cap that trip routing needs."""
+    settings_env(GOOGLE_MONTHLY_CAP_USD="1.0")
+    from homefinder import usage
+    from homefinder.integrations.google import make_google
+    usage.spend("google", 0.8)
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"status": "ZERO_RESULTS"})))
+    settings_env(GOOGLE_MONTHLY_CAP_USD="1.0", GOOGLE_API_KEY="k")
+    with pytest.raises(usage.BudgetExceeded):
+        make_google(http, reserve=0.2).geocode("x")
+    assert make_google(http).geocode("x") is None  # the trip-planning client may still spend

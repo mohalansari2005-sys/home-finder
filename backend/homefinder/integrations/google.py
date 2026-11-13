@@ -9,6 +9,7 @@ from homefinder.config import get_settings
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+ENRICH_RESERVE = 0.2  # bulk enrichment/recompute leave 20% of the cap for trip planning
 COST = {"geocode": 0.005, "matrix_element": 0.01, "route_optimized": 0.015}
 
 
@@ -17,9 +18,10 @@ def _wp(p: tuple[float, float]) -> dict:
 
 
 class GoogleClient:
-    def __init__(self, api_key: str, http: httpx.Client, spend: Callable[[float], None] | None = None):
+    def __init__(self, api_key: str, http: httpx.Client, spend: Callable[[float], None] | None = None,
+                 reserve: float = 0.0):
         self._key, self._http = api_key, http
-        self._spend = spend or (lambda c: usage.spend("google", c))
+        self._spend = spend or (lambda c: usage.spend("google", c, reserve=reserve))
 
     def geocode(self, address: str) -> tuple[float, float] | None:
         self._spend(COST["geocode"])
@@ -70,6 +72,7 @@ class GoogleClient:
         return {"order": list(order), "leg_minutes": legs}
 
 
-def make_google(http: httpx.Client) -> GoogleClient | None:
+def make_google(http: httpx.Client, reserve: float = 0.0) -> GoogleClient | None:
+    """`reserve`: share of the monthly cap this client may not touch (bulk enrichment uses ENRICH_RESERVE)."""
     key = get_settings().google_api_key
-    return GoogleClient(key, http) if key else None
+    return GoogleClient(key, http, reserve=reserve) if key else None
