@@ -26,6 +26,9 @@ _FIELD_MAP = {"id": "id", "title": "title", "bodyTEXT": "bodyTEXT", "city": "cit
 _IDENTITY_MAP = {k: k for k in _FIELD_MAP} | {"geo": "geo", "district": "district"}
 
 _DISTRICT_RE = re.compile(r"حي\s+([؀-ۿ]+(?:\s[؀-ۿ]+)?)")
+# a word that follows the district name in a title but is not part of it («حي القيروان للبيع»)
+_NOT_DISTRICT = {normalize_ar(w) for w in ("للبيع", "للايجار", "شمال", "جنوب", "شرق", "غرب", "الرياض", "في", "بالرياض", "بسعر", "بحي", "قريبة", "قريب",
+                 "فيلا", "شقة", "دور", "ارض", "مساحة", "موقع", "عمر", "جديدة", "جديد", "راقي", "ممتازة", "مميزة", "للتقسيط")}
 _RENT_RE = re.compile(r"ايجار")  # after normalize_ar: إيجار / للإيجار / الايجار
 _WANTED_RE = re.compile(r"^\s*(مطلوب|ابحث|ابي|ابغي|ابغى|نبي|ادور)(\s|$)")
 _GEOHASH = "0123456789bcdefghjkmnpqrstuvwxyz"
@@ -67,7 +70,10 @@ def _district(api_value, title: str, body: str) -> str | None:
     for text in (title, body):
         m = _DISTRICT_RE.search(text)
         if m:
-            return normalize_ar(m.group(1))
+            words = normalize_ar(m.group(1)).split(" ")
+            if len(words) > 1 and words[1] in _NOT_DISTRICT:
+                words = words[:1]
+            return " ".join(words)
     return None
 
 
