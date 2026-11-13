@@ -48,3 +48,15 @@ it('shows a muted removed chip only when the listing was removed', () => {
   rerender(<ListingCard listing={{ ...base, status: 'stale' }} onOpen={() => {}} onReact={() => {}} />)
   expect(screen.queryByText('الإعلان محذوف')).toBeNull()
 })
+
+it('shows the price-drop badge with the amount and the old price struck through', () => {
+  const drop = { from: 2000000, to: 1850000, at: '2026-11-01T10:00:00Z' }
+  const { rerender } = render(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByTestId('price-drop')).toBeNull()
+  expect(document.querySelector('del')).toBeNull()
+  rerender(<ListingCard listing={{ ...base, price_drop: drop }} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.getByTestId('price-drop')).toHaveTextContent('انخفض 150,000 ر.س')
+  expect(screen.getByTestId('price-drop').querySelector('bdi')).toHaveTextContent('150,000')
+  expect(document.querySelector('del')).toHaveTextContent('2,000,000 ر.س')
+  expect(screen.getByText('1,850,000 ر.س')).toBeInTheDocument()
+})

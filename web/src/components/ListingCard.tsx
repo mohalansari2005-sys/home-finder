@@ -1,6 +1,6 @@
-import { Bath, BedDouble, Bookmark, BookmarkCheck, House, Ruler, X } from 'lucide-react'
+import { Bath, BedDouble, Bookmark, BookmarkCheck, House, Ruler, TrendingDown, X } from 'lucide-react'
 import type { ListingCard as T, ReactKind } from '../api/types'
-import { formatArea, formatPrice, formatRooms, PROPERTY_TYPE_AR } from '../lib/format'
+import { formatArea, formatNumber, formatPrice, formatRooms, PROPERTY_TYPE_AR } from '../lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -22,14 +22,22 @@ export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
           ? <img src={l.photo_url} alt="" loading="lazy" width={640} height={480} className="size-full object-cover" />
           : <div className="flex size-full items-center justify-center text-muted-foreground"><House className="size-6" strokeWidth={1.75} aria-hidden /></div>}
         <ScoreSeal score={l.score} className="absolute start-2 top-2" />
-        <div className="absolute end-2 top-2 flex gap-1">
+        <div className="absolute end-2 top-2 flex flex-col items-end gap-1.5">
           {l.family_status === 'new' && <Badge>جديد</Badge>}
-          {l.price_drop && <Badge variant="secondary">انخفض السعر</Badge>}
+          {l.price_drop && (
+            <Badge data-testid="price-drop" className="h-6 bg-card px-2.5 text-sm font-semibold text-success">
+              <TrendingDown strokeWidth={2} aria-hidden />
+              انخفض <bdi>{formatNumber(l.price_drop.from - l.price_drop.to)}</bdi> ر.س
+            </Badge>
+          )}
           {l.status === 'removed' && <Badge variant="secondary" className="bg-muted text-muted-foreground">الإعلان محذوف</Badge>}
         </div>
       </div>
       <div className="space-y-2 px-1">
-        <div className="font-display text-xl font-bold"><bdi>{formatPrice(l.price)}</bdi></div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-xl font-bold"><bdi>{formatPrice(l.price)}</bdi></span>
+          {l.price_drop && <del className="text-sm text-muted-foreground"><bdi>{formatPrice(l.price_drop.from)}</bdi></del>}
+        </div>
         {l.title && <p className="line-clamp-1 text-sm text-muted-foreground">{l.title}</p>}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span>{PROPERTY_TYPE_AR[l.property_type ?? ''] ?? 'عقار'}</span>
