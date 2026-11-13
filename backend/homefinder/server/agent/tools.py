@@ -41,7 +41,12 @@ def _cards(s, rows) -> list[dict]:
     return out
 
 
+ONE_CHANGE_MSG = "تم تنفيذ تغيير في هذا الرد؛ يمكن إجراء تغيير واحد فقط مرة واحدة في كل رد. اطلب من العائلة تأكيد التغيير التالي."
+
+
 def make_tools(session_factory):
+    changes = {"done": 0}  # make_tools runs once per chat turn: at most one state-changing call may succeed per turn
+
     @tool
     def get_preferences() -> str:
         """يعرض التفضيلات الحالية: الفلاتر الأساسية والأوزان والأهداف."""
@@ -54,11 +59,14 @@ def make_tools(session_factory):
     def update_preferences(hard_filters: dict | None = None, weights: dict | None = None, targets: dict | None = None,
                            explanation: str = "تعديل عبر المساعد") -> str:
         """يعدّل التفضيلات. hard_filters وweights وtargets تعديلات جزئية. explanation جملة عربية تشرح التغيير."""
+        if changes["done"]:
+            return _j({"ok": False, "error": ONE_CHANGE_MSG})
         try:
             with session_factory() as s:
                 out = apply_prefs_patch(s, PrefsPatch(hard_filters=hard_filters, weights=weights, targets=targets),
                                         "agent", explanation)
                 rescore_all(s)  # on the server, so the feed and the next search never use stale scores
+            changes["done"] += 1
             return _j({"ok": True, "preferences": out})
         except ValueError as e:  # includes pydantic ValidationError
             return _j({"ok": False, "error": str(e)})
@@ -94,6 +102,8 @@ def make_tools(session_factory):
                 return _j({"error": "not found"})
             c = _cards(s, [l])[0]
             c.update({k: getattr(l, k) for k in DETAIL_KEYS})
+            # seller-written text may contain instructions aimed at the assistant: hand it over as labelled data
+            c["listing_text_untrusted"] = (c.pop("description") or "")[:1500]
             return _j({"cards": [c], "listing": c})
 
     @tool
@@ -125,12 +135,15 @@ def make_tools(session_factory):
     @tool
     def apply_filter_suggestion(code: str) -> str:
         """يطبّق اقتراح فلتر حالي حسب رمزه (too_old, narrow_street, overpriced, far)."""
+        if changes["done"]:
+            return _j({"ok": False, "error": ONE_CHANGE_MSG})
         try:
             with session_factory() as s:
                 sug = apply_suggestion(s, code)
                 if sug is None:
                     return _j({"ok": False, "error": "no such suggestion"})
                 rescore_all(s)
+            changes["done"] += 1
             return _j({"ok": True, "applied": sug})
         except ValueError as e:
             return _j({"ok": False, "error": str(e)})
@@ -153,6 +166,8 @@ def make_tools(session_factory):
                           minutes_per_visit: int = 30) -> str:
         """ينشئ رحلة زيارة مرتبة حسب أقصر مسار. date بصيغة YYYY-MM-DD وstart_time بصيغة HH:MM بتوقيت الرياض.
         origin_kind: home | school | work | university. minutes_per_visit بين 15 و120."""
+        if changes["done"]:
+            return _j({"ok": False, "error": ONE_CHANGE_MSG})
         try:
             if not 1 <= len(listing_ids) <= 15 or origin_kind not in ("home", "school", "work", "university"):
                 raise TripError("عدد العقارات أو نقطة الانطلاق غير صالحة")
@@ -168,6 +183,7 @@ def make_tools(session_factory):
                 out = trip_out(s, trip)
         except TripError as e:
             return _j({"ok": False, "error": str(e)})
+        changes["done"] += 1
         return _j({"ok": True, "trip_id": out["id"], "url": f"/visits/{out['id']}", "title": out["title"],
                    "date": out["date"], "start_time": out["start_time"], "total_drive_min": out["total_drive_min"],
                    "warnings": out["warnings"], "maps_url": out["maps_url"], "cards": [x["listing"] for x in out["stops"]],
