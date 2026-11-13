@@ -9,13 +9,20 @@
 set -euo pipefail
 P="${PREFIX:-}"
 
-install -d "$P/etc/cron.d" "$P/etc/sysctl.d" "$P/etc/systemd/system/docker.service.d" "$P/var/backups/homefinder"
+install -d "$P/etc/letsencrypt/renewal-hooks/pre" "$P/etc/letsencrypt/renewal-hooks/post" "$P/etc/cron.d" "$P/etc/sysctl.d" "$P/etc/systemd/system/docker.service.d" "$P/var/backups/homefinder"
 echo 'net.ipv4.ip_nonlocal_bind=1' > "$P/etc/sysctl.d/99-homefinder.conf"
 printf '[Unit]\nAfter=tailscaled.service\nWants=tailscaled.service\n' > "$P/etc/systemd/system/docker.service.d/10-tailscale.conf"
 # Weekly: delete downloaded photos of listings that were removed, merged or rejected more than 30 days ago.
 cat > "$P/etc/cron.d/homefinder-prune" <<'CRON'
 30 3 * * 0 root cd /opt/homefinder && docker compose -f deploy/docker-compose.yml --env-file .env exec -T api python -m homefinder.cli prune-photos >> /var/log/homefinder-prune.log 2>&1
 CRON
+# apt's certbot.timer renews twice a day; the standalone challenge needs port 80, which nginx holds. These hooks run
+# only when a certificate is actually due. (They replace the old Monday cron line, which the timer made redundant.)
+C="docker compose -f /opt/homefinder/deploy/docker-compose.yml --env-file /opt/homefinder/.env"
+printf '#!/bin/sh\n%s stop nginx\n' "$C" > "$P/etc/letsencrypt/renewal-hooks/pre/stop-nginx.sh"
+printf '#!/bin/sh\n%s start nginx\n' "$C" > "$P/etc/letsencrypt/renewal-hooks/post/start-nginx.sh"
+chmod 755 "$P/etc/letsencrypt/renewal-hooks/pre/stop-nginx.sh" "$P/etc/letsencrypt/renewal-hooks/post/start-nginx.sh"
+[ -f "$P/etc/cron.d/homefinder" ] && sed -i '/certbot renew/d' "$P/etc/cron.d/homefinder"
 chmod 700 "$P/var/backups/homefinder"  # dumps hold seller phones and the home location
 
 if [ -z "$P" ]; then

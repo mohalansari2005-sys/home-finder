@@ -14,7 +14,7 @@ One Hetzner VPS (2 GB) runs Postgres+PostGIS, the API and nginx. The Mac runs th
 scp deploy/scripts/server-setup.sh root@IP:
 ssh root@IP 'DOMAIN=your.domain EMAIL=you@example.com bash server-setup.sh'
 ```
-Record the Tailscale IP it prints. The script also runs `deploy/scripts/server-hardening.sh` (docker starts after tailscaled, so the Postgres port bound to the Tailscale IP survives a reboot; `/var/backups/homefinder` is root-only; a weekly photo-prune cron is installed).
+Record the Tailscale IP it prints. The script also runs `deploy/scripts/server-hardening.sh` (docker starts after tailscaled, so the Postgres port bound to the Tailscale IP survives a reboot; `/var/backups/homefinder` is root-only; a weekly photo-prune cron is installed; certbot renewal hooks stop/start nginx for apt's renewal timer, replacing the old Monday cron line).
 
 **A server that was set up before this fix** does not need a full re-run. Pull the repo and run only the hardening step once:
 ```bash
