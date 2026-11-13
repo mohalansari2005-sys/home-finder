@@ -14,9 +14,10 @@ export interface ListingDetail extends ListingCard {
   has_driver_room: boolean | null; has_yard: boolean | null; has_elevator: boolean | null; geo_precision: string
   photos: string[]; sources: { source: string; url: string; seller_phone: string | null; seller_name: string | null }[]
   price_history: { price: number; observed_at: string }[]; score_breakdown: ScoreBreakdown | null; status: string
+  passes_filters: boolean; filter_reasons: string[]
 }
 export interface ScoreContribution { factor: string; value: number; weight: number; delta: number }
-export interface ScoreBreakdown { total: number; contributions: ScoreContribution[]; missing: string[] }
+export interface ScoreBreakdown { total: number | null; contributions: ScoreContribution[]; missing: string[] }
 export interface FeedPage { items: ListingCard[]; next_offset: number | null }
 export interface MapPoint {
   id: number; lat: number; lng: number; price: number | null; score: number | null; family_status: FamilyStatus
