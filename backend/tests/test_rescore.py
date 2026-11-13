@@ -37,7 +37,7 @@ def test_record_change_diff(db):
 
 def test_rescore_job(db):
     db.add(Listing(price=1_000_000)); db.commit()
-    deps = WorkerDeps(session_factory=session_scope, adapters={}, llm=None, google=None, photo_sink=None, http=None)
+    deps = WorkerDeps(session_factory=session_scope, adapters={}, llm=None, maps=None, photo_sink=None, http=None)
     assert dispatch(deps, "rescore_all", {}) == {"rescored": 1}
 
 

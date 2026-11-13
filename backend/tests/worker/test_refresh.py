@@ -26,7 +26,7 @@ class FakeAdapter:
 
 def deps(**adapters):
     return WorkerDeps(session_factory=session_scope, adapters={k: (lambda a=a: a) for k, a in adapters.items()},
-                      llm=None, google=None, photo_sink=None, http=None)
+                      llm=None, maps=None, photo_sink=None, http=None)
 
 
 def raw(price=2_000_000, sid="1", **kw):
@@ -161,6 +161,6 @@ def test_recompute_commutes_skips_removed_and_rejected_listings(db):
     class G:
         def drive_minutes(self, origin, dests, dep): asked.append(origin); return [9] * len(dests)
 
-    d = deps(); d.google = G()
+    d = deps(); d.maps = G()
     out = dispatch(d, "recompute_commutes", {})
     assert out == {"listings": 2} and len(asked) == 2  # the live one and the bookmarked one only

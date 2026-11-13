@@ -24,7 +24,7 @@ class WorkerDeps:
     session_factory: Callable[[], AbstractContextManager[Session]]
     adapters: dict[str, Callable[[], Any]]
     llm: Any
-    google: Any
+    maps: Any
     photo_sink: Any
     http: Any
 
@@ -72,8 +72,8 @@ def handle_rescore_all(deps: WorkerDeps, payload: dict) -> dict:
 
 
 def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
-    if deps.google is None:
-        return {"skipped": "no google key"}
+    if deps.maps is None:
+        return {"skipped": "no tomtom key"}
     n = 0
     with deps.session_factory() as s:
         ids = list(s.scalars(select(Listing.id).where(
@@ -82,7 +82,7 @@ def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
     for lid in ids:
         with deps.session_factory() as s:
             l = s.get(Listing, lid)
-            l.commutes = compute_commutes(s, deps.google, l)
+            l.commutes = compute_commutes(s, deps.maps, l)
             apply_score(l, prefs.get_or_create(s))
             n += 1
     return {"listings": n}

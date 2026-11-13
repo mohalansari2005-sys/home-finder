@@ -86,7 +86,7 @@ Conversations are saved with LangGraph's Postgres checkpointer, so a thread can 
 
 **Why this split?** Scoring, filters and learning are deterministic, testable and free, so the app keeps working with no API key at all. The LLM is used only where language is the actual problem: messy ad text and free-form requests.
 
-**Guardrails.** Every OpenAI call is metered against a monthly budget (`OPENAI_MONTHLY_CAP_USD`). When the budget runs out, the assistant says so and the rest of the app carries on. If the Mac worker is offline, the assistant can still run a small Aqar search from the server. Google usage is capped the same way (`GOOGLE_MONTHLY_CAP_USD`). The cap counts Google's list price and ignores their free monthly allowance, so real spend is lower than the meter. Background enrichment stops at 80% of the cap, which keeps the last 20% for planning visit trips.
+**Guardrails.** Every OpenAI call is metered against a monthly budget (`OPENAI_MONTHLY_CAP_USD`). When the budget runs out, the assistant says so and the rest of the app carries on. If the Mac worker is offline, the assistant can still run a small Aqar search from the server. Geocoding and drive times use TomTom's free tier, which counts requests rather than dollars, so every TomTom request is counted per day and per month against `TOMTOM_DAILY_REQUEST_CAP` and `TOMTOM_MONTHLY_REQUEST_CAP`, set just under the free allowance. A request over a cap is never sent; the step is skipped and retried later. Background enrichment stops at 80% of each cap, which keeps the last 20% for planning visit trips.
 
 ## Architecture
 
@@ -98,14 +98,14 @@ Conversations are saved with LangGraph's Postgres checkpointer, so a thread can 
  │ Hetzner VPS (1 vCPU, 2 GB)  │◄─────────────►│ MacBook worker           │
  │ nginx + static web app      │               │ Aqar and Haraj scrapers  │
  │ FastAPI: auth, feed, chat   │               │ OpenAI extraction        │
- │ Postgres 16 + PostGIS       │               │ Google geocode/routes    │
+ │ Postgres 16 + PostGIS       │               │ TomTom geocode/routes    │
  │ job queue (SKIP LOCKED)     │               │ photos, learning         │
  └─────────────────────────────┘               └──────────────────────────┘
 ```
 
 - **The server stays light.** All heavy work runs on the Mac, which pulls jobs from a Postgres queue over Tailscale.
 - **The app works while the Mac sleeps.** New listings arrive when it wakes.
-- **Spending is capped.** OpenAI and Google usage have monthly limits (`OPENAI_MONTHLY_CAP_USD`, `GOOGLE_MONTHLY_CAP_USD`).
+- **Spending is capped.** OpenAI has a monthly budget (`OPENAI_MONTHLY_CAP_USD`); TomTom requests stay inside its free tier (`TOMTOM_DAILY_REQUEST_CAP`, `TOMTOM_MONTHLY_REQUEST_CAP`).
 
 **Stack**
 
@@ -114,7 +114,7 @@ Conversations are saved with LangGraph's Postgres checkpointer, so a thread can 
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Postgres 16 + PostGIS |
 | Scraping | curl_cffi, with a Playwright fallback |
 | Agent | LangGraph with OpenAI, streamed over SSE |
-| Maps | Google Routes (traffic-aware), Geocoding, Maps JS |
+| Maps | TomTom Routing (traffic-aware for the departure time) and Geocoding; MapLibre GL with OpenFreeMap tiles (no key) |
 | Web | React 19, Vite, TypeScript, Tailwind v4, shadcn/ui (RTL), TanStack Query |
 | Tests | pytest, Vitest, Playwright |
 
@@ -134,7 +134,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -e '.[server,worker,dev]'
 cd web && npm ci && npm run dev                             # proxies /api to :8000
 ```
 
-Set `FAMILY_PASSWORD_HASH` to the output of `python -m homefinder.cli hash-password`. Other settings are in `backend/homefinder/config.py`. Without OpenAI or Google keys, the app still runs and skips the steps that need them.
+Set `FAMILY_PASSWORD_HASH` to the output of `python -m homefinder.cli hash-password`. Other settings are in `backend/homefinder/config.py`. Without an OpenAI or TomTom key, the app still runs and skips the steps that need them. The map needs no key.
 
 **Tests:**
 

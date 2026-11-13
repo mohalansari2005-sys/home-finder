@@ -9,7 +9,7 @@ from homefinder.server.routes import listings as listings_route
 from homefinder.server.routes import visits as visits_route
 
 
-class FakeGoogle:
+class FakeMaps:
     def drive_minutes(self, origin, dests, dep):
         return [5] * len(dests)
 
@@ -19,8 +19,8 @@ class FakeGoogle:
 
 
 @pytest.fixture(autouse=True)
-def no_google(monkeypatch):
-    monkeypatch.setattr(visits_route, "get_google", lambda: None)  # Google is unset: plan_trip keeps order, warns no_route
+def no_maps(monkeypatch):
+    monkeypatch.setattr(visits_route, "get_maps", lambda: None)  # TomTom is unset: plan_trip keeps order, warns no_route
 
 
 def seed(db):
@@ -68,7 +68,7 @@ def test_groups_and_trip_flow(db, family):
 
 
 def test_trip_shape_matches_contract(db, family, monkeypatch):
-    monkeypatch.setattr(visits_route, "get_google", lambda: FakeGoogle())
+    monkeypatch.setattr(visits_route, "get_maps", lambda: FakeMaps())
     ids = seed(db)
     t = make_trip(family, ids[:2])
     assert set(t) == {"id", "title", "date", "start_time", "origin_kind", "minutes_per_visit", "status", "warnings",
@@ -150,7 +150,7 @@ def test_manual_precheck_pulls_delayed_job_forward(db, family):
 
 
 def test_cancel_stop_replans(db, family, monkeypatch):
-    monkeypatch.setattr(visits_route, "get_google", lambda: FakeGoogle())
+    monkeypatch.setattr(visits_route, "get_maps", lambda: FakeMaps())
     ids = seed(db)
     extra = Listing(title="ث", district="النرجس", lat=24.845, lng=46.651, family_status="bookmarked"); db.add(extra); db.commit()
     t = make_trip(family, [*ids[:2], extra.id])

@@ -21,7 +21,7 @@ def r(i):
 
 
 def deps(adapter):
-    return WorkerDeps(session_factory=session_scope, adapters={"aqar": lambda: adapter}, llm=None, google=None,
+    return WorkerDeps(session_factory=session_scope, adapters={"aqar": lambda: adapter}, llm=None, maps=None,
                       photo_sink=None, http=None)
 
 

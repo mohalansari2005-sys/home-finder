@@ -25,7 +25,7 @@ class Sink:
 
 def _deps(sink):
     http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, content=_jpeg())))
-    return WorkerDeps(session_factory=session_scope, adapters={}, llm=None, google=None, photo_sink=sink, http=http)
+    return WorkerDeps(session_factory=session_scope, adapters={}, llm=None, maps=None, photo_sink=sink, http=http)
 
 
 def mk(db, sid="1", urls=("https://i/1.jpg",), **kw):

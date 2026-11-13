@@ -16,7 +16,7 @@ class FakeLLM:
         return {k: self.out.get(k) for k in schema["properties"]}
 
 
-class FakeGoogle:
+class FakeMaps:
     def __init__(self): self.calls = 0
     def geocode(self, address): self.calls += 1; return (24.8, 46.6)
     def drive_minutes(self, origin, dests, dep): self.calls += 1; return [15] * len(dests)
@@ -37,14 +37,14 @@ def test_extract_skips_without_text():
     assert extract_missing(llm, Listing(description=None, title=None)) == {} and llm.calls == []
 
 
-def _deps(llm=None, google=None):
-    return WorkerDeps(session_factory=session_scope, adapters={}, llm=llm, google=google, photo_sink=None, http=None)
+def _deps(llm=None, maps=None):
+    return WorkerDeps(session_factory=session_scope, adapters={}, llm=llm, maps=maps, photo_sink=None, http=None)
 
 
 def test_enrich_without_location(db):
     l = Listing(title="فيلا", description="فيلا للبيع"); db.add(l); db.commit()
-    g = FakeGoogle()
-    out = enrich_listing(_deps(llm=FakeLLM(), google=g), l.id)
+    g = FakeMaps()
+    out = enrich_listing(_deps(llm=FakeLLM(), maps=g), l.id)
     db.expire_all(); l = db.get(Listing, l.id)
     assert g.calls == 0 and l.geo_precision == "none" and l.commutes == {} and l.enriched_at is not None
     assert out["commutes"] == 0
@@ -54,8 +54,8 @@ def test_enrich_geocodes_district_then_commutes(db):
     from tests.worker.test_commute import _place
     _place(db, "work", 24.7, 46.7)
     l = Listing(district="النرجس", city="الرياض"); db.add(l); db.commit()
-    g = FakeGoogle()
-    enrich_listing(_deps(google=g), l.id)
+    g = FakeMaps()
+    enrich_listing(_deps(maps=g), l.id)
     db.expire_all(); l = db.get(Listing, l.id)
     assert l.geo_precision == "district" and l.lat == 24.8 and l.commutes == {"work": 15}
 
@@ -80,7 +80,7 @@ def test_enrich_merges_duplicates_and_rescores_survivor(db):
         return l
     old, new = mk(24.8, "aqar", "1"), mk(24.8002, "haraj", "2")
     db.commit()
-    out = enrich_listing(_deps(google=FakeGoogle()), new.id)
+    out = enrich_listing(_deps(maps=FakeMaps()), new.id)
     db.expire_all()
     assert out["merged_into"] == old.id and db.get(Listing, new.id).merged_into_id == old.id
     assert db.get(Listing, old.id).score is not None
@@ -90,7 +90,7 @@ def test_enrich_dedupe_failure_does_not_fail_the_job(db, monkeypatch):
     from homefinder.worker.enrich import pipeline
     monkeypatch.setattr(pipeline, "dedupe_and_merge", lambda s, i: (_ for _ in ()).throw(ValueError("bad phash")))
     l = Listing(title="فيلا", description="x"); db.add(l); db.commit()
-    out = enrich_listing(_deps(google=FakeGoogle()), l.id)
+    out = enrich_listing(_deps(maps=FakeMaps()), l.id)
     assert "merged_into" not in out
 
 
@@ -100,9 +100,9 @@ def test_enrich_retry_gives_up_after_five_attempts(db):
     l = Listing(title="فيلا", description="فيلا للبيع"); db.add(l); db.commit()
     bad = FakeLLM(exc=RuntimeError("bad schema"))
     for attempt in range(0, 5):
-        enrich_listing(_deps(llm=bad, google=FakeGoogle()), l.id, attempt=attempt)
+        enrich_listing(_deps(llm=bad, maps=FakeMaps()), l.id, attempt=attempt)
         j = db.query(Job).filter_by(type="enrich_listing").one()
         assert j.payload == {"listing_id": l.id, "attempt": attempt + 1}
         db.delete(j); db.commit()
-    out = enrich_listing(_deps(llm=bad, google=FakeGoogle()), l.id, attempt=5)
+    out = enrich_listing(_deps(llm=bad, maps=FakeMaps()), l.id, attempt=5)
     assert out["requeued"] is False and db.query(Job).filter_by(type="enrich_listing").count() == 0

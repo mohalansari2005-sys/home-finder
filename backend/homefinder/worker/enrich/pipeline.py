@@ -29,7 +29,7 @@ def enrich_listing(deps, listing_id: int, attempt: int = 0) -> dict:
         steps = []
         if deps.llm is not None:
             steps.append(("extract", lambda: [setattr(l, k, v) for k, v in extract_missing(deps.llm, l).items()]))
-        steps.append(("geo", lambda: ensure_location(deps.google, l)))
+        steps.append(("geo", lambda: ensure_location(deps.maps, l)))
         for name, step in steps:
             try:
                 step()
@@ -39,9 +39,9 @@ def enrich_listing(deps, listing_id: int, attempt: int = 0) -> dict:
             except Exception as e:  # noqa: BLE001 — provider outage: keep partial data, retry later
                 log.warning("enrich %s: %s failed: %s", listing_id, name, e)
                 requeue = True
-        if l.lat is not None and deps.google is not None:
+        if l.lat is not None and deps.maps is not None:
             try:
-                l.commutes = compute_commutes(s, deps.google, l)
+                l.commutes = compute_commutes(s, deps.maps, l)
             except Exception as e:  # noqa: BLE001
                 log.warning("enrich %s: commute failed: %s", listing_id, e)
                 requeue = True

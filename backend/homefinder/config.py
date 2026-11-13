@@ -26,8 +26,12 @@ class Settings(BaseSettings):
     openai_price_out_large: float = 10.0
     openai_monthly_cap_usd: float = 20.0
 
-    google_api_key: str = ""
-    google_monthly_cap_usd: float = 50.0
+    # Geocoding and traffic-aware routing (server + worker only; the browser map needs no key).
+    # TomTom's free tier allows 20,000 Routing and 20,000 Geocoding requests a month (older accounts: 2,500
+    # requests a day), so stay a little under both. Requests over a cap are skipped, never sent.
+    tomtom_api_key: str = ""
+    tomtom_daily_request_cap: int = 2300
+    tomtom_monthly_request_cap: int = 18000
 
     scrape_interval_hours: float = 4.0
     # Sent to Aqar as the `app-version` header; bump it in .env when Aqar rejects it (docs/sources/aqar.md)

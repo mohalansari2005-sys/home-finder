@@ -4,10 +4,10 @@ One Hetzner VPS (2 GB) runs Postgres+PostGIS, the API and nginx. The Mac runs th
 
 ## 1. Prerequisites
 - A Hetzner VPS, a domain whose **A record** points at it (do not add an AAAA record: behind Docker's proxy every IPv6 visitor shares one address, so the login rate limit would treat the whole family as one client), and a Tailscale account.
-- A Google Cloud project with **Geocoding API**, **Routes API** and **Maps JavaScript API** enabled. Create two keys:
-  - a **server key**, restricted to Geocoding + Routes;
-  - a **browser key**, restricted to Maps JavaScript and the HTTP referrer `https://DOMAIN/*`.
-- A vector **Map ID** (needed for Advanced Markers) and an OpenAI API key.
+- A free **TomTom developer account** (https://developer.tomtom.com, no credit card) and its API key (the default key from the dashboard works; it needs the **TomTom Orbis Maps** Routing API and Geocoding API, which new keys have). It is used by the server and the worker only, for geocoding districts and for traffic-aware drive times. The endpoints are in `backend/homefinder/integrations/tomtom.py` (`BASE_URL`). The free tier currently allows 20,000 Routing and 20,000 Geocoding requests a month (older accounts: 2,500 requests a day); the app stays under that with `TOMTOM_DAILY_REQUEST_CAP` and `TOMTOM_MONTHLY_REQUEST_CAP`. If your TomTom dashboard shows a different allowance, set the caps a little below it.
+- An OpenAI API key.
+
+The map in the browser is MapLibre with OpenFreeMap tiles: no account, no key, nothing to configure.
 
 ## 2. Server bootstrap
 ```bash
@@ -29,7 +29,7 @@ Copy `.env.example` to `/opt/homefinder/.env` and fill in:
 - `COOKIE_SECURE=true`
 - `WORKER_TOKEN` (`openssl rand -hex 24`)
 - `DOMAIN`, `TAILSCALE_IP`
-- `GOOGLE_API_KEY` (server key), `OPENAI_API_KEY`, and the monthly caps
+- `TOMTOM_API_KEY`, `OPENAI_API_KEY`, and the caps (`OPENAI_MONTHLY_CAP_USD`, `TOMTOM_DAILY_REQUEST_CAP`, `TOMTOM_MONTHLY_REQUEST_CAP`). The server uses TomTom to plan visit trips; the worker uses it for geocoding and commutes. Both count against the same caps, which are stored in the database.
 
 With `COOKIE_SECURE=true` the api **refuses to start** (and the container restarts in a loop; see `docker compose logs api`) if `SESSION_SECRET` or `WORKER_TOKEN` is a placeholder (`CHANGE_ME…`, the dev defaults) or shorter than 32 characters, or if `FAMILY_PASSWORD_HASH` is empty.
 
@@ -47,10 +47,8 @@ After the first deploy, **reboot the VPS once** (`ssh root@IP reboot`) and confi
 DATABASE_URL=postgresql+psycopg://hf:<POSTGRES_PASSWORD>@<TAILSCALE_IP>:5432/homefinder
 SERVER_URL=http://<TAILSCALE_IP>
 WORKER_TOKEN=<same as server>
-GOOGLE_API_KEY=...
+TOMTOM_API_KEY=...
 OPENAI_API_KEY=...
-VITE_GOOGLE_MAPS_KEY=<browser key>
-VITE_GOOGLE_MAP_ID=...
 ```
 Optionally set `AQAR_APP_VERSION` (default `1.0.3`) if Aqar bumps its required web-client version (see `docs/sources/aqar.md`). It is read from this file by the worker at start, so restart the worker after changing it.
 

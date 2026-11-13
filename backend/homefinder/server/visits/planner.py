@@ -12,7 +12,7 @@ from homefinder.server.visits.links import AR_WEEKDAYS
 
 log = logging.getLogger(__name__)
 RIYADH = ZoneInfo("Asia/Riyadh")
-MIN_LEAD = timedelta(minutes=15)  # Google rejects departure times in the past
+MIN_LEAD = timedelta(minutes=15)  # route a departure that has not happened yet
 PRECHECK_LEAD = timedelta(hours=3)
 ORIGIN_AR = {"home": "المنزل", "school": "المدرسة", "work": "العمل", "university": "الجامعة"}
 
@@ -34,11 +34,11 @@ def departure_utc(d: date, t: time, now: datetime) -> datetime:
     return _departure(_local_start(d, t), now)
 
 
-def _route(google, origin, stops: list[Listing], departure: datetime) -> dict | None:
-    if google is None or not stops:
+def _route(maps, origin, stops: list[Listing], departure: datetime) -> dict | None:
+    if maps is None or not stops:
         return None
     try:
-        res = google.optimize_route(origin, [(l.lat, l.lng) for l in stops], departure)
+        res = maps.optimize_route(origin, [(l.lat, l.lng) for l in stops], departure)
     except Exception as e:  # noqa: BLE001 — quota, outage or a bad stop: keep the requested order instead
         log.warning("route optimization failed: %s", e)
         return None
@@ -47,11 +47,11 @@ def _route(google, origin, stops: list[Listing], departure: datetime) -> dict | 
     return res
 
 
-def _schedule(trip: VisitTrip, stops: list[VisitStop], listings: dict[int, Listing], google, now: datetime,
+def _schedule(trip: VisitTrip, stops: list[VisitStop], listings: dict[int, Listing], maps, now: datetime,
               start_local: datetime, first_position: int) -> None:
-    """Order `stops` (optimized when Google answers), then fill positions, ETAs/ETDs, drive_min and total_drive_min."""
+    """Order `stops` (optimized when TomTom answers), then fill positions, ETAs/ETDs, drive_min and total_drive_min."""
     origin = (trip.origin_lat, trip.origin_lng)
-    res = _route(google, origin, [listings[x.listing_id] for x in stops], _departure(start_local, now))
+    res = _route(maps, origin, [listings[x.listing_id] for x in stops], _departure(start_local, now))
     warnings = [w for w in (trip.warnings or []) if w != "no_route"]
     if res is None:
         ordered, legs = list(stops), [None] * (len(stops) + 1)
@@ -87,7 +87,7 @@ def _default_title(rows: list[Listing], d: date) -> str:
     return f"زيارة يوم {AR_WEEKDAYS[d.weekday()]}"
 
 
-def plan_trip(s: Session, google, *, listing_ids: list[int], d: date, t: time, origin_kind: str,
+def plan_trip(s: Session, maps, *, listing_ids: list[int], d: date, t: time, origin_kind: str,
               minutes_per_visit: int, title: str | None = None, now: datetime | None = None) -> VisitTrip:
     now = now or datetime.now(UTC)
     place = s.scalar(select(Place).where(Place.kind == origin_kind))
@@ -112,12 +112,12 @@ def plan_trip(s: Session, google, *, listing_ids: list[int], d: date, t: time, o
              for i, l in enumerate(located)]
     s.add_all(stops)
     s.flush()
-    _schedule(trip, stops, {l.id: l for l in located}, google, now, _local_start(d, t), 0)
+    _schedule(trip, stops, {l.id: l for l in located}, maps, now, _local_start(d, t), 0)
     s.flush()
     return trip
 
 
-def replan(s: Session, google, trip: VisitTrip, now: datetime | None = None) -> VisitTrip:
+def replan(s: Session, maps, trip: VisitTrip, now: datetime | None = None) -> VisitTrip:
     """Re-plan the stops that are neither cancelled nor visited. Visited stops stay first and untouched;
     cancelled ones go last without times. Trip and stop rows are kept."""
     now = now or datetime.now(UTC)
@@ -132,7 +132,7 @@ def replan(s: Session, google, trip: VisitTrip, now: datetime | None = None) -> 
     if ends:
         start = max(start, max(ends))  # the remaining visits begin once the last finished one is over
     listings = {l.id: l for l in s.scalars(select(Listing).where(Listing.id.in_([x.listing_id for x in active])))}
-    _schedule(trip, active, listings, google, now, start, len(visited))
+    _schedule(trip, active, listings, maps, now, start, len(visited))
     for i, st in enumerate(cancelled):
         st.position = len(visited) + len(active) + i
         st.eta = st.etd = st.drive_min = None
@@ -150,13 +150,13 @@ def enqueue_precheck(s: Session, trip_id: int, *, delay: timedelta | None = None
                   .values(run_after=func.now(), priority=10))
 
 
-def create_trip_from_request(s: Session, google, *, listing_ids: list[int], d: date, t: time, origin_kind: str = "home",
+def create_trip_from_request(s: Session, maps, *, listing_ids: list[int], d: date, t: time, origin_kind: str = "home",
                              minutes_per_visit: int = 30, title: str | None = None,
                              now: datetime | None = None) -> VisitTrip:
     """The one code path for creating a trip (HTTP route and agent tool): plan it, then queue the pre-trip check
     3 h before the start (immediately when that moment has passed). Raises TripError."""
     now = now or datetime.now(UTC)
-    trip = plan_trip(s, google, listing_ids=listing_ids, d=d, t=t, origin_kind=origin_kind,
+    trip = plan_trip(s, maps, listing_ids=listing_ids, d=d, t=t, origin_kind=origin_kind,
                      minutes_per_visit=minutes_per_visit, title=title, now=now)
     run_at = _local_start(d, t) - PRECHECK_LEAD
     enqueue_precheck(s, trip.id, delay=run_at - now if run_at > now else None)

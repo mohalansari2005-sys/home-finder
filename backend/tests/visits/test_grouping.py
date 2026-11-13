@@ -42,7 +42,7 @@ def test_grouping_skips_no_coords(db):
     assert no_coords == [a.id] and groups[0].count == 1
 
 
-def test_without_google_merges_only_within_3km(db):
+def test_without_maps_merges_only_within_3km(db):
     bm(db, "النرجس", 24.84, 46.65); bm(db, "الياسمين", 24.82, 46.64)  # ~2.5 km
     bm(db, "الملقا", 24.88, 46.62)  # ~5 km from النرجس: too far without drive times
     db.commit()
@@ -51,7 +51,7 @@ def test_without_google_merges_only_within_3km(db):
     assert db.query(DistrictDriveCache).count() == 0
 
 
-def test_google_failure_falls_back_to_haversine_and_is_not_cached(db):
+def test_maps_failure_falls_back_to_haversine_and_is_not_cached(db):
     class Boom:
         def drive_minutes(self, *a): raise RuntimeError("quota")
     bm(db, "النرجس", 24.84, 46.65); bm(db, "الياسمين", 24.82, 46.64); db.commit()

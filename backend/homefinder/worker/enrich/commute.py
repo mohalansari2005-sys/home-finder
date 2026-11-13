@@ -25,7 +25,7 @@ def origin_key(lat: float, lng: float) -> str:
     return f"{lat:.3f},{lng:.3f}"
 
 
-def compute_commutes(s: Session, google, listing: Listing, now: datetime | None = None) -> dict[str, int | None]:
+def compute_commutes(s: Session, maps, listing: Listing, now: datetime | None = None) -> dict[str, int | None]:
     if listing.lat is None or listing.lng is None:
         return {}
     now = now or datetime.now(UTC)
@@ -39,7 +39,7 @@ def compute_commutes(s: Session, google, listing: Listing, now: datetime | None 
         by_dep.setdefault(DEPARTURE.get(p.kind, time(7, 30)), []).append(p)
     origin = (round(listing.lat, 3), round(listing.lng, 3))
     for dep, group in by_dep.items():
-        mins = google.drive_minutes(origin, [(p.lat, p.lng) for p in group], next_workday_at(dep, now))
+        mins = maps.drive_minutes(origin, [(p.lat, p.lng) for p in group], next_workday_at(dep, now))
         for p, m in zip(group, mins):
             s.merge(CommuteCache(origin_key=key, place_id=p.id, minutes=m))
             result[p.kind] = m

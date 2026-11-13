@@ -135,7 +135,7 @@ def _visit_seed(db):
 
 def test_visit_tools(db, monkeypatch):
     from homefinder.server.routes import visits as visits_route
-    monkeypatch.setattr(visits_route, "get_google", lambda: None)
+    monkeypatch.setattr(visits_route, "get_maps", lambda: None)
     ids = _visit_seed(db)
     out = json.loads(tools()["suggest_visit_trip"].invoke({}))
     assert len(out["groups"]) >= 1 and len(out["groups"]) <= 3
