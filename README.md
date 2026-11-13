@@ -22,9 +22,11 @@ We didn't need another listings site. We needed something to do the tedious part
 | Chaotic visit days | Trips grouped by district, with driving order, time slots, WhatsApp links and a pre-visit check that the ads are still live |
 
 The app also has:
-- **An Arabic chat assistant.** "نبي فيلا في النرجس أو الياسمين بحدود مليونين، والمدرسة أهم من الدوام" (a villa in Al Narjis or Al Yasmin, around two million, school matters more than work) updates the preferences and returns matching homes.
-- **Map, compare and settings views.** A map with price pins, a side-by-side compare, and settings with lockable weights and a change history.
-- **One shared family login.** It works on phone, iPad and desktop, installs to the home screen, and is right-to-left throughout.
+- **An Arabic chat assistant.** You talk to it the way you'd talk to the family group. "نبي فيلا في النرجس أو الياسمين بحدود مليونين، والمدرسة أهم من الدوام" (a villa in Al Narjis or Al Yasmin, around two million, school matters more than work) updates the filters and weights and replies with the best matches as cards you can open. It can also explain a score, compare homes or plan a visit. Every change it makes shows up in the settings history, and replies stream in as they're written.
+- **A map.** Price pins are coloured by score, with saved homes highlighted, and sit next to the school, work and university markers, so you can see at a glance which good matches cluster near the places that matter.
+- **Compare.** Pick 2–4 homes for a side-by-side table of price, price per metre, size, rooms, building age and every drive time. The best value in each row is highlighted, and missing data is flagged rather than hidden.
+- **Settings.** Set the four places, the hard filters and how much each factor matters. You can lock a weight so the learner leaves it alone, and see a history of every change, whether it came from you, the assistant or the learner. A status panel shows when each source last ran, whether the Mac worker is online, and any failed jobs.
+- **One shared family login.** It works on phone (bottom tabs), iPad (sidebar, or a two-column grid in portrait) and desktop (list, map and chat side by side). It installs to the home screen and is right-to-left Arabic throughout, with Western digits for prices and times.
 
 ## Architecture
 
