@@ -1,4 +1,6 @@
 import json
+
+import pytest
 from pathlib import Path
 
 from langchain_core.messages import AIMessage
@@ -60,6 +62,7 @@ def test_fallback_search_reports_blocked_and_failures(db):
     nap = Pacer(sleep=lambda s: None)
     t = FakeTransport(exc=Blocked("403"))
     assert fallback_search.run(session_scope, transport_factory=lambda: t, pacer=nap) == {"blocked": True} and t.closed
+    fallback_search.reset_cooldown()  # a blocked run also starts the cooldown
     t2 = FakeTransport(exc=RuntimeError("boom"))
     assert fallback_search.run(session_scope, transport_factory=lambda: t2, pacer=nap) == {"error": "search_failed"} and t2.closed
 
@@ -71,3 +74,20 @@ def test_fallback_search_does_nothing_while_aqar_is_paused(db):
     built = []
     out = fallback_search.run(session_scope, transport_factory=lambda: built.append(1))
     assert out == {"paused": True} and built == []
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cooldown():
+    fallback_search.reset_cooldown()
+    yield
+    fallback_search.reset_cooldown()
+
+
+def test_fallback_search_runs_at_most_once_per_30_minutes(db, monkeypatch):
+    clock = [5000.0]
+    monkeypatch.setattr(fallback_search.time, "monotonic", lambda: clock[0])
+    nap = Pacer(sleep=lambda s: None)
+    assert fallback_search.run(session_scope, transport_factory=lambda: FakeTransport([]), pacer=nap) == {"ingested": 0}
+    assert fallback_search.run(session_scope, transport_factory=lambda: FakeTransport([]), pacer=nap) == {"cooldown": True}
+    clock[0] += 30 * 60 + 1
+    assert fallback_search.run(session_scope, transport_factory=lambda: FakeTransport([]), pacer=nap) == {"ingested": 0}
