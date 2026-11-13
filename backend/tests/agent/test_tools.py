@@ -21,12 +21,15 @@ def test_get_preferences_tool(db):
 
 
 def test_update_preferences_tool(db):
+    db.add(Listing(title="غالي", price=2_500_000, passes_filters=True, score=70)); db.commit()
     out = json.loads(tools()["update_preferences"].invoke({"hard_filters": {"price_max": 2_000_000}, "weights": {"street_width": 2}}))
     assert out["ok"] and out["preferences"]["hard_filters"]["price_max"] == 2_000_000
     db.expire_all()
     p = db.get(Preferences, 1)
     assert "street_width" in p.locked_weights
-    assert db.query(Job).filter_by(type="rescore_all").count() == 1
+    l = db.query(Listing).one()  # rescored on the server straight away, not left for the Mac
+    assert l.passes_filters is False and l.filter_reasons == ["price_above_max"] and l.score_breakdown["coverage"] is not None
+    assert db.query(Job).filter_by(type="rescore_all").count() == 0
     assert db.query(Job).filter_by(type="scrape_search").count() == 2  # price_max is search-relevant: aqar + haraj
 
 
@@ -111,7 +114,9 @@ def test_filter_suggestion_tools(db):
     assert json.loads(t["apply_filter_suggestion"].invoke({"code": "too_old"}))["ok"] is True
     db.expire_all()
     assert db.get(Preferences, 1).hard_filters["building_age_max"] == 21
-    assert db.query(Job).filter_by(type="rescore_all").count() == 1
+    old = db.query(Listing).filter(Listing.building_age_years == 25).first()
+    assert old.passes_filters is False and "too_old" in old.filter_reasons  # rescored with the new filter
+    assert db.query(Job).filter_by(type="rescore_all").count() == 0
 
 
 def _visit_seed(db):

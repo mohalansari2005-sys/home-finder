@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from homefinder import jobs, prefs
 from homefinder.models import Listing, WorkerStatus
+from homefinder.rescore import rescore_all
 from homefinder.scoring import effective_targets, effective_weights
 from homefinder.server.agent import fallback_search
 from homefinder.server.routes import visits as visits_routes
@@ -57,7 +58,7 @@ def make_tools(session_factory):
             with session_factory() as s:
                 out = apply_prefs_patch(s, PrefsPatch(hard_filters=hard_filters, weights=weights, targets=targets),
                                         "agent", explanation)
-                jobs.enqueue(s, "rescore_all", {}, dedupe_key="rescore_all")
+                rescore_all(s)  # on the server, so the feed and the next search never use stale scores
             return _j({"ok": True, "preferences": out})
         except ValueError as e:  # includes pydantic ValidationError
             return _j({"ok": False, "error": str(e)})
@@ -129,7 +130,7 @@ def make_tools(session_factory):
                 sug = apply_suggestion(s, code)
                 if sug is None:
                     return _j({"ok": False, "error": "no such suggestion"})
-                jobs.enqueue(s, "rescore_all", {}, dedupe_key="rescore_all")
+                rescore_all(s)
             return _j({"ok": True, "applied": sug})
         except ValueError as e:
             return _j({"ok": False, "error": str(e)})
