@@ -194,3 +194,44 @@ def parse_maps_link(body: str | None) -> tuple[float, float] | None:
                 if SAUDI[0] <= lat <= SAUDI[1] and SAUDI[2] <= lng <= SAUDI[3]:
                     return lat, lng
     return None
+
+
+# --- seller phone -------------------------------------------------------------------------------------------------
+# Haraj never exposes the phone through the API, but sellers often type their mobile into the post. The number is
+# personal data: it is returned to the caller only (stored in the private DB), never logged.
+_PHONE_CAND = re.compile(
+    r"(?<![\d,])(?<!\d[.])(?:\+?\s*(?:00)?966[\s.-]*)?0?5(?:[\s.-]*\d){8}(?!\d|[,.]\d)")
+# numbers that are not phones: licence (ترخيص / رخصة فال / فال), ad id (رقم الاعلان ...)
+_LICENCE = re.compile(
+    rf"(?<![{_AR}])(?:ال)?(?:ترخيص|رخصه|رخص|فال)(?![{_AR}])(?:\s+(?:ال)?(?:اعلان|فال|عقاري|عقاريه))*\s*[:=#]?\s*\d[\d-]*")
+_AD_ID = re.compile(
+    rf"(?<![{_AR}])(?:رقم\s*(?:ال)?(?:اعلان|معرف|كود|عقار)|(?:ال)?اعلان\s*رقم)(?![{_AR}])\s*[:=#]?\s*\d[\d-]*")
+_FILLER_BETWEEN_DIGITS = re.compile(
+    rf"(?<=\d)\s*(?<![{_AR}])(?:الرقم|رقم|الجوال|جوال|واتساب|واتس|وتس|اتصال|تواصل)(?![{_AR}])\s*(?=\d)")
+
+
+def _first_mobile(t: str, exclude: set[str]) -> str | None:
+    from homefinder.server.visits.links import normalize_sa_mobile
+
+    for m in _PHONE_CAND.finditer(t):
+        digits = re.sub(r"\D", "", m.group())
+        n = normalize_sa_mobile(digits)
+        if n and digits not in exclude and n not in exclude and n[3:] not in exclude and "0" + n[3:] not in exclude:
+            return n
+    return None
+
+
+def parse_phone_from_text(*texts: str | None, exclude: set[str] | None = None) -> str | None:
+    """First Saudi mobile written in the texts (body first, then title) as 9665XXXXXXXX, else None.
+    Skips landlines, licence numbers, ad ids and prices; `exclude` holds digit strings that are known ids."""
+    skip = {re.sub(r"\D", "", to_western_digits(x)) for x in (exclude or set())}
+    for raw in texts:
+        if not raw:
+            continue
+        t = _AD_ID.sub(" ", _LICENCE.sub(" ", _normalize(raw)))
+        found = _first_mobile(t, skip)
+        if found is None:  # a number split by words ("05512 واتس 34567"): retry with the words removed
+            found = _first_mobile(_FILLER_BETWEEN_DIGITS.sub(" ", t), skip)
+        if found:
+            return found
+    return None
