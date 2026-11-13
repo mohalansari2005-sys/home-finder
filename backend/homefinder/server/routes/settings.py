@@ -20,7 +20,7 @@ router = APIRouter(dependencies=[Depends(require_family)])
 
 
 class PlaceIn(BaseModel):
-    kind: Literal["school", "work", "university", "airport"]
+    kind: Literal["home", "school", "work", "university", "airport"]
     name: str = Field(min_length=1, max_length=120)
     lat: float = Field(ge=16, le=33)
     lng: float = Field(ge=34, le=56)
@@ -38,7 +38,7 @@ def get_places(s: Session = Depends(get_db)):
 
 @router.put("/places")
 def put_places(body: list[PlaceIn], s: Session = Depends(get_db)):
-    changed = False
+    changed = False  # only places that feed commute times; "home" is a trip origin and never gets one
     for p in body:
         row = s.scalar(select(Place).where(Place.kind == p.kind))
         if row is None:
@@ -47,14 +47,14 @@ def put_places(body: list[PlaceIn], s: Session = Depends(get_db)):
         elif (row.lat, row.lng) != (p.lat, p.lng):
             s.flush()
             s.execute(delete(CommuteCache).where(CommuteCache.place_id == row.id))
-            changed = True
+            changed = changed or p.kind != "home"
         else:
             row.name = p.name
             continue
         row.name, row.lat, row.lng = p.name, p.lat, p.lng
         row.geom = WKTElement(f"POINT({p.lng} {p.lat})", srid=4326)
         row.updated_at = func.now()
-        changed = True
+        changed = changed or p.kind != "home"
     if changed:
         jobs.enqueue(s, "recompute_commutes", {}, dedupe_key="recompute_commutes", delay=timedelta(seconds=30))
     s.flush()
