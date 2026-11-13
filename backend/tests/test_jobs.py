@@ -67,3 +67,15 @@ def test_stale_job_past_max_attempts_fails(db):
     db.commit()
     assert jobs.reclaim_stale(db) == 1
     assert db.get(Job, jid).status == "failed"
+
+
+def test_old_finished_jobs_are_pruned_but_recent_failed_and_active_ones_stay(db):
+    """M6: the jobs table never grows without bound."""
+    from datetime import datetime, UTC
+    old, recent = datetime.now(UTC) - timedelta(days=45), datetime.now(UTC) - timedelta(days=5)
+    db.add_all([Job(type="x", status="done", finished_at=old), Job(type="x", status="done", finished_at=recent),
+                Job(type="x", status="failed", finished_at=old), Job(type="x", status="pending")])
+    db.commit()
+    jobs.reclaim_stale(db); db.commit()
+    assert sorted(j.status for j in db.query(Job)) == ["done", "failed", "pending"]
+    assert db.query(Job).filter_by(status="done").one().finished_at > datetime.now(UTC) - timedelta(days=10)

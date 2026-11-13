@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,11 @@ def enqueue(s: Session, type: str, payload: dict | None = None, *, dedupe_key: s
     return s.execute(stmt.returning(Job.id)).scalar_one_or_none()
 
 
+KEEP_DONE = timedelta(days=30)
+
+
 def reclaim_stale(s: Session) -> int:
+    s.execute(delete(Job).where(Job.status == "done", Job.finished_at < func.now() - KEEP_DONE))  # bounded table
     cutoff = func.now() - STALE_AFTER
     failed = s.execute(update(Job).where(Job.status == "claimed", Job.claimed_at < cutoff, Job.attempts >= MAX_ATTEMPTS)
                        .values(status="failed", finished_at=func.now(), error="stale: worker never finished")).rowcount
