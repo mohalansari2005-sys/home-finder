@@ -4,6 +4,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from homefinder import jobs, prefs
@@ -18,13 +19,23 @@ DETAIL_FIELDS = ["description", "livings", "building_age_years", "street_width_m
                  "score_breakdown", "status", "passes_filters", "filter_reasons"]
 
 
-def _photo_urls(s: Session, ids: list[int]) -> dict[int, list[str]]:
+def _photo_urls(s: Session, ids: list[int], first_only: bool = False) -> dict[int, list[str]]:
+    """Photo urls per listing: downloaded photos first, else the sources' remote urls.
+    Selects columns only (never the heavy `raw` JSON); `first_only` returns just the cover for cards and the map."""
     out: dict[int, list[str]] = {}
-    for p in s.scalars(select(Photo).where(Photo.listing_id.in_(ids)).order_by(Photo.listing_id, Photo.position)):
-        out.setdefault(p.listing_id, []).append(f"/photos/{p.path}")
-    for src in s.scalars(select(ListingSource).where(ListingSource.listing_id.in_(ids))):
-        if src.listing_id not in out and src.photo_urls:
-            out[src.listing_id] = list(src.photo_urls)
+    if not ids:
+        return out
+    q = select(Photo.listing_id, Photo.path).where(Photo.listing_id.in_(ids)).order_by(Photo.listing_id, Photo.position)
+    if first_only:
+        q = q.ext(distinct_on(Photo.listing_id))
+    for lid, path in s.execute(q):
+        out.setdefault(lid, []).append(f"/photos/{path}")
+    rest = [i for i in ids if i not in out]
+    if rest:
+        for lid, urls in s.execute(select(ListingSource.listing_id, ListingSource.photo_urls)
+                                   .where(ListingSource.listing_id.in_(rest)).order_by(ListingSource.id)):
+            if lid not in out and urls:
+                out[lid] = list(urls[:1] if first_only else urls)
     return out
 
 
@@ -79,7 +90,7 @@ def feed(view: Literal["all", "new", "bookmarked"] = "all", district: str | None
     more = len(rows) > limit
     rows = rows[:limit]
     ids = [l.id for l in rows]
-    photos, drops = _photo_urls(s, ids), _price_drops(s, ids)
+    photos, drops = _photo_urls(s, ids, first_only=True), _price_drops(s, ids)
     return {"items": [card(l, photos.get(l.id), drops.get(l.id)) for l in rows],
             "next_offset": offset + limit if more else None}
 
@@ -169,7 +180,7 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
 def map_points(s: Session = Depends(get_db)):
     rows = list(s.scalars(select(Listing).where(*visible(), Listing.status == "active", Listing.lat.is_not(None),
                                                 Listing.family_status != "rejected").limit(2000)))
-    photos, drops = _photo_urls(s, [l.id for l in rows]), _price_drops(s, [l.id for l in rows])
+    photos, drops = _photo_urls(s, [l.id for l in rows], first_only=True), _price_drops(s, [l.id for l in rows])
     return [{"id": l.id, "lat": l.lat, "lng": l.lng, "price": l.price, "score": l.score,
              "family_status": l.family_status, "status": l.status, "title": l.title,
              "district": l.district, "photo_url": (photos.get(l.id) or [None])[0],

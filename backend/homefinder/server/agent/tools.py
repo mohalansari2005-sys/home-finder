@@ -30,7 +30,7 @@ def _j(o) -> str:
 
 def _cards(s, rows) -> list[dict]:
     ids = [l.id for l in rows]
-    photos, drops = _photo_urls(s, ids), _price_drops(s, ids)
+    photos, drops = _photo_urls(s, ids, first_only=True), _price_drops(s, ids)
     out = []
     for l in rows:
         c = card(l, photos.get(l.id), drops.get(l.id))

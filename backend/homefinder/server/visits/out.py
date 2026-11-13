@@ -18,26 +18,26 @@ def _hhmm(dt: datetime | None) -> str | None:
 
 def listing_cards(s: Session, rows: list[Listing]) -> list[dict]:
     ids = [l.id for l in rows]
-    photos, drops = _photo_urls(s, ids), _price_drops(s, ids)
+    photos, drops = _photo_urls(s, ids, first_only=True), _price_drops(s, ids)
     return [card(l, photos.get(l.id), drops.get(l.id)) for l in rows]
 
 
 def _phones(s: Session, listing_ids: list[int]) -> dict[int, str | None]:
     """First seller phone that is a valid Saudi mobile, per listing (normalized 9665XXXXXXXX)."""
     out: dict[int, str | None] = {}
-    for src in s.scalars(select(ListingSource).where(ListingSource.listing_id.in_(listing_ids))
-                         .order_by(ListingSource.id)):
-        if out.get(src.listing_id) is None:
-            out[src.listing_id] = normalize_sa_mobile(src.seller_phone)
+    for lid, phone in s.execute(select(ListingSource.listing_id, ListingSource.seller_phone)
+                                .where(ListingSource.listing_id.in_(listing_ids)).order_by(ListingSource.id)):
+        if out.get(lid) is None:
+            out[lid] = normalize_sa_mobile(phone)
     return out
 
 
 def _source_urls(s: Session, listing_ids: list[int]) -> dict[int, str]:
     """URL of each listing's oldest source ad (the one listing detail's `sources` lists first)."""
     out: dict[int, str] = {}
-    for src in s.scalars(select(ListingSource).where(ListingSource.listing_id.in_(listing_ids))
-                         .order_by(ListingSource.id)):
-        out.setdefault(src.listing_id, src.url)
+    for lid, url in s.execute(select(ListingSource.listing_id, ListingSource.url)
+                              .where(ListingSource.listing_id.in_(listing_ids)).order_by(ListingSource.id)):
+        out.setdefault(lid, url)
     return out
 
 
