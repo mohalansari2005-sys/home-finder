@@ -1,6 +1,7 @@
 import argparse
 import getpass
 import json
+import sys
 
 import bcrypt
 from geoalchemy2.elements import WKTElement
@@ -44,6 +45,9 @@ def main(argv=None) -> None:
 
     if a.cmd == "hash-password":
         pw = getpass.getpass("Family password: ")
+        if len(pw.encode()) > 72:  # bcrypt's hard limit
+            print("كلمة المرور أطول من 72 بايت (الحرف العربي بايتان)، اختر كلمة أقصر", file=sys.stderr)
+            raise SystemExit(1)
         print(bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode())
     elif a.cmd == "set-place":
         _set_place(a.kind, a.name, a.lat, a.lng)
