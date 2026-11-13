@@ -4,8 +4,9 @@ from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from homefinder import jobs
+from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource, PriceHistory
+from homefinder.rescore import apply_score
 from homefinder.schemas import RawListing
 
 LISTING_FIELDS = [f for f in RawListing.model_fields["fields"].annotation.model_fields if f not in ("lat", "lng")]
@@ -51,6 +52,7 @@ def ingest_raw(s: Session, raw: RawListing) -> IngestResult:
         if f.price:
             s.add(PriceHistory(listing_id=listing.id, price=f.price))
         jobs.enqueue(s, "enrich_listing", {"listing_id": listing.id}, dedupe_key=f"enrich:{listing.id}")
+        apply_score(listing, prefs.get_or_create(s))
         s.flush()
         return IngestResult(listing.id, created=True, price_changed=False)
 
@@ -72,5 +74,6 @@ def ingest_raw(s: Session, raw: RawListing) -> IngestResult:
         jobs.enqueue(s, "enrich_listing", {"listing_id": listing.id}, dedupe_key=f"enrich:{listing.id}")
     listing.status = "active"
     listing.last_seen = func.now()
+    apply_score(listing, prefs.get_or_create(s))
     s.flush()
     return IngestResult(listing.id, created=False, price_changed=price_changed)
