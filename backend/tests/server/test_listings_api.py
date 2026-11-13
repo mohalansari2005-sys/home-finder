@@ -68,3 +68,48 @@ def test_removed_listing_hidden_from_feed_but_kept_in_bookmarks_with_status(db, 
     assert [(i["id"], i["status"]) for i in items] == [(gone.id, "removed")]
     assert family.get("/api/feed").json()["items"][0]["status"] == "active"
     assert family.get(f"/api/listings/{gone.id}").json()["status"] == "removed"
+
+
+def _history(db, listing, *rows):
+    """rows: (price, days_ago) oldest first."""
+    from datetime import timedelta
+    from sqlalchemy import func
+    from homefinder.models import PriceHistory
+    for price, days in rows:
+        db.add(PriceHistory(listing_id=listing.id, price=price, observed_at=func.now() - timedelta(days=days)))
+        db.flush()
+    db.commit()
+
+
+def test_price_drop_in_card(db, family):
+    from homefinder.models import PriceHistory
+    l = mk(db, price=1_900_000)
+    db.add(PriceHistory(listing_id=l.id, price=2_000_000)); db.flush()
+    db.add(PriceHistory(listing_id=l.id, price=1_900_000)); db.commit()
+    card = family.get("/api/feed").json()["items"][0]
+    assert card["price_drop"]["from"] == 2_000_000 and card["price_drop"]["to"] == 1_900_000
+    assert card["price_drop"]["at"]
+
+
+def test_price_drop_rules(db, family):
+    dropped = mk(db, price=900); _history(db, dropped, (1_000_000, 10), (900_000, 5))
+    rose = mk(db, price=1_100_000); _history(db, rose, (1_000_000, 10), (1_100_000, 5))
+    old_drop = mk(db, price=900_000); _history(db, old_drop, (1_000_000, 60), (900_000, 40))
+    single = mk(db, price=1_000_000); _history(db, single, (1_000_000, 3))
+    none = mk(db)
+    # only the LAST change counts: dropped, then rose again -> no badge
+    again = mk(db, price=950_000); _history(db, again, (1_000_000, 20), (900_000, 10), (950_000, 2))
+    # dropped twice: from/to are the last two entries
+    twice = mk(db, price=800_000); _history(db, twice, (1_000_000, 20), (900_000, 10), (800_000, 2))
+    items = {i["id"]: i["price_drop"] for i in family.get("/api/feed").json()["items"]}
+    assert items[dropped.id]["from"] == 1_000_000 and items[dropped.id]["to"] == 900_000
+    assert items[rose.id] is None and items[old_drop.id] is None and items[single.id] is None and items[none.id] is None
+    assert items[again.id] is None
+    assert (items[twice.id]["from"], items[twice.id]["to"]) == (900_000, 800_000)
+
+
+def test_price_drop_in_detail_and_map(db, family):
+    l = mk(db, price=900_000); _history(db, l, (1_000_000, 4), (900_000, 1))
+    assert family.get(f"/api/listings/{l.id}").json()["price_drop"]["from"] == 1_000_000
+    pt = family.get("/api/map").json()[0]
+    assert pt["price_drop"]["to"] == 900_000 and pt["status"] == "active"
