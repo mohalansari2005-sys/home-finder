@@ -25,6 +25,7 @@ export function ListingCard({ listing: l, selected, onOpen, onReact }: Props) {
         <div className="absolute end-2 top-2 flex gap-1">
           {l.family_status === 'new' && <Badge>جديد</Badge>}
           {l.price_drop && <Badge variant="secondary">انخفض السعر</Badge>}
+          {l.status === 'removed' && <Badge variant="secondary" className="bg-muted text-muted-foreground">الإعلان محذوف</Badge>}
         </div>
       </div>
       <div className="space-y-2 px-1">
