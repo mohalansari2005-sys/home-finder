@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useAutoGrow } from './useAutoGrow'
 import { useChat } from './ChatProvider'
 import { ChatMessage, ToolStatus, toolLabel } from './ChatMessage'
 
@@ -49,6 +50,7 @@ export function ChatPanel({ variant, onClose }: Props) {
   const input = useRef<HTMLTextAreaElement>(null)
   const end = useRef<HTMLDivElement>(null)
   const page = variant === 'page'
+  useAutoGrow(input, draft)
 
   useEffect(() => { restore() }, [restore])
   useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [items, tool, streaming])
