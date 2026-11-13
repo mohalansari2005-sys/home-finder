@@ -76,7 +76,7 @@ def test_trip_shape_matches_contract(db, family, monkeypatch):
     assert (t["date"], t["start_time"], t["status"], t["total_drive_min"]) == ("2026-12-05", "16:00", "planned", 30)
     s0, s1 = t["stops"]
     assert set(s0) == {"id", "position", "listing", "eta_local", "etd_local", "drive_min", "contact_status", "rating",
-                       "notes", "flags", "whatsapp_url", "phone", "photos", "old_price"}
+                       "notes", "flags", "whatsapp_url", "phone", "photos", "old_price", "source_url"}
     assert (s0["eta_local"], s0["etd_local"], s1["eta_local"]) == ("16:10", "16:40", "16:50")
     assert s0["contact_status"] == "not_contacted" and s0["flags"] == [] and s0["photos"] == []
     assert s0["listing"]["id"] in ids and "photo_url" in s0["listing"]
@@ -272,3 +272,17 @@ def test_photo_upload_rejections(db, family, settings_env, tmp_path):
     assert family.post("/api/visits/stops/999/photos", files={"file": ("a.png", b"x", "image/png")}).status_code == 404
     assert family.get("/api/visits/photos/999").status_code == 404
     assert db.query(VisitPhoto).count() == 0
+
+
+def test_stop_source_url_is_first_source_or_null(db, family):
+    ids = seed(db)
+    db.query(ListingSource).filter_by(listing_id=ids[0]).update({"url": "https://aqar.example/1"})
+    db.add(ListingSource(listing_id=ids[0], source="haraj", source_id="h1", url="https://haraj.example/1", raw={}))
+    db.commit()
+    stops = make_trip(family, ids[:2])["stops"]
+    by = {s["listing"]["id"]: s for s in stops}
+    assert by[ids[0]]["source_url"] == "https://aqar.example/1"  # oldest source, as the listing detail's sources[0]
+    assert by[ids[1]]["source_url"] == "u"
+    db.query(ListingSource).filter_by(listing_id=ids[1]).delete(); db.commit()
+    trip_id = db.query(VisitTrip).one().id
+    assert {s["listing"]["id"]: s["source_url"] for s in family.get(f"/api/visits/trips/{trip_id}").json()["stops"]}[ids[1]] is None

@@ -32,6 +32,15 @@ def _phones(s: Session, listing_ids: list[int]) -> dict[int, str | None]:
     return out
 
 
+def _source_urls(s: Session, listing_ids: list[int]) -> dict[int, str]:
+    """URL of each listing's oldest source ad (the one listing detail's `sources` lists first)."""
+    out: dict[int, str] = {}
+    for src in s.scalars(select(ListingSource).where(ListingSource.listing_id.in_(listing_ids))
+                         .order_by(ListingSource.id)):
+        out.setdefault(src.listing_id, src.url)
+    return out
+
+
 def photo_url(photo_id: int) -> str:
     return f"/api/visits/photos/{photo_id}"
 
@@ -42,6 +51,7 @@ def trip_out(s: Session, trip: VisitTrip) -> dict:
     listings = {l.id: l for l in s.scalars(select(Listing).where(Listing.id.in_(ids)))} if ids else {}
     cards = {c["id"]: c for c in listing_cards(s, list(listings.values()))}
     phones = _phones(s, ids) if ids else {}
+    urls = _source_urls(s, ids) if ids else {}
     photos: dict[int, list[str]] = {}
     if stops:
         for p in s.scalars(select(VisitPhoto).where(VisitPhoto.stop_id.in_([x.id for x in stops])).order_by(VisitPhoto.id)):
@@ -58,6 +68,7 @@ def trip_out(s: Session, trip: VisitTrip) -> dict:
             "contact_status": st.contact_status, "rating": st.rating, "notes": st.notes, "flags": flags,
             "old_price": st.old_price if "price_changed" in flags else None,
             "whatsapp_url": whatsapp_link(phone, l.title, eta_local), "phone": phone,
+            "source_url": urls.get(st.listing_id),
             "photos": photos.get(st.id, [])})
     route = [(listings[x.listing_id].lat, listings[x.listing_id].lng) for x in stops
              if x.contact_status not in ("cancelled", "visited") and listings[x.listing_id].lat is not None]
