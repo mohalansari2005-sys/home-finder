@@ -43,3 +43,31 @@ def test_drive_minutes_matrix():
 def test_drive_minutes_no_route():
     g = client(lambda req: httpx.Response(200, json=[{"originIndex": 0, "destinationIndex": 0, "condition": "ROUTE_NOT_FOUND"}]))
     assert g.drive_minutes((1, 1), [(2, 2)], datetime(2026, 11, 15, tzinfo=UTC)) == [None]
+
+
+def test_optimize_route():
+    def h(req):
+        body = json.loads(req.content)
+        assert body["optimizeWaypointOrder"] is True and len(body["intermediates"]) == 3
+        assert body["origin"] == body["destination"]
+        assert body["routingPreference"] == "TRAFFIC_AWARE" and body["departureTime"] == "2026-11-21T13:00:00Z"
+        assert req.headers["X-Goog-FieldMask"] == "routes.optimizedIntermediateWaypointIndex,routes.legs.duration"
+        return httpx.Response(200, json={"routes": [{"optimizedIntermediateWaypointIndex": [2, 0, 1],
+                                                     "legs": [{"duration": "600s"}, {"duration": "300s"}, {"duration": "420s"}, {"duration": "900s"}]}]})
+    g = client(h)
+    r = g.optimize_route((24.7, 46.6), [(1, 1), (2, 2), (3, 3)], datetime(2026, 11, 21, 13, tzinfo=UTC))
+    assert r == {"order": [2, 0, 1], "leg_minutes": [10, 5, 7, 15]} and spent == [0.015]
+
+
+def test_optimize_single_stop_no_optimization_flag():
+    def h(req):
+        assert "optimizeWaypointOrder" not in json.loads(req.content)
+        return httpx.Response(200, json={"routes": [{"legs": [{"duration": "60s"}, {"duration": "60s"}]}]})
+    assert client(h).optimize_route((0, 0), [(1, 1)], datetime(2026, 11, 21, tzinfo=UTC)) == {"order": [0], "leg_minutes": [1, 1]}
+
+
+def test_optimize_no_routes_returns_none_and_missing_leg_is_none():
+    g = client(lambda req: httpx.Response(200, json={}))
+    assert g.optimize_route((0, 0), [(1, 1)], datetime(2026, 11, 21, tzinfo=UTC)) is None
+    g = client(lambda req: httpx.Response(200, json={"routes": [{"legs": [{"duration": "120s"}, {}]}]}))
+    assert g.optimize_route((0, 0), [(1, 1)], datetime(2026, 11, 21, tzinfo=UTC)) == {"order": [0], "leg_minutes": [2, None]}

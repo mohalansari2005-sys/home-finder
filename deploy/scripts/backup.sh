@@ -8,6 +8,8 @@ ls -1t "$DIR"/db-*.sql.gz | tail -n +15 | xargs -r rm --
 if [ "$(date +%u)" = "5" ]; then
   docker run --rm -v homefinder_photos:/p -v "$DIR":/b alpine tar czf "/b/photos-$STAMP.tgz" -C /p .
   ls -1t "$DIR"/photos-*.tgz | tail -n +5 | xargs -r rm --
+  docker run --rm -v homefinder_visit_photos:/p -v "$DIR":/b alpine tar czf "/b/visit-photos-$STAMP.tgz" -C /p .
+  ls -1t "$DIR"/visit-photos-*.tgz | tail -n +5 | xargs -r rm --
 fi
 # Optional off-box copy (Hetzner Storage Box): set STORAGE_BOX=u123456@u123456.your-storagebox.de in .env
 if grep -q '^STORAGE_BOX=' .env; then

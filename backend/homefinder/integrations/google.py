@@ -8,7 +8,8 @@ from homefinder.config import get_settings
 
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
-COST = {"geocode": 0.005, "matrix_element": 0.01}
+ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+COST = {"geocode": 0.005, "matrix_element": 0.01, "route_optimized": 0.015}
 
 
 def _wp(p: tuple[float, float]) -> dict:
@@ -43,6 +44,30 @@ class GoogleClient:
             if el.get("condition") == "ROUTE_EXISTS" and el.get("duration"):
                 out[el["destinationIndex"]] = round(int(el["duration"].rstrip("s")) / 60)
         return out
+
+    def optimize_route(self, origin: tuple[float, float], stops: list[tuple[float, float]],
+                       departure: datetime) -> dict | None:
+        """Round trip origin -> stops -> origin. {"order": visit order as indexes into stops, "leg_minutes":
+        origin->1st, 1st->2nd, ..., last->origin (None for a leg Google gave no duration for)}. None = no route."""
+        self._spend(COST["route_optimized"])
+        body = {"origin": _wp(origin)["waypoint"], "destination": _wp(origin)["waypoint"],
+                "intermediates": [_wp(p)["waypoint"] for p in stops], "travelMode": "DRIVE",
+                "routingPreference": "TRAFFIC_AWARE", "departureTime": departure.isoformat().replace("+00:00", "Z")}
+        if len(stops) >= 2:
+            body["optimizeWaypointOrder"] = True
+        r = self._http.post(ROUTES_URL, json=body, timeout=30, headers={
+            "X-Goog-Api-Key": self._key,
+            "X-Goog-FieldMask": "routes.optimizedIntermediateWaypointIndex,routes.legs.duration"})
+        r.raise_for_status()
+        routes = r.json().get("routes") or []
+        if not routes:
+            return None
+        route = routes[0]
+        order = route.get("optimizedIntermediateWaypointIndex") or list(range(len(stops)))
+        legs = [round(int(leg["duration"].rstrip("s")) / 60) if leg.get("duration") else None
+                for leg in route.get("legs") or []]
+        legs += [None] * (len(stops) + 1 - len(legs))
+        return {"order": list(order), "leg_minutes": legs}
 
 
 def make_google(http: httpx.Client) -> GoogleClient | None:

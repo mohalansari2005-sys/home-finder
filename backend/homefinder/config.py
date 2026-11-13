@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     server_url: str = "http://localhost:8000"
     photos_dir: str = "./data/photos"
     serve_photos: bool = False
+    visit_photos_dir: str = "./data/visit_photos"  # family-private; never under photos_dir (which nginx serves publicly)
 
     openai_api_key: str = ""
     openai_model_small: str = "gpt-5-mini"
