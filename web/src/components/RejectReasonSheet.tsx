@@ -34,7 +34,7 @@ function Body({ onSubmit }: Pick<Props, 'onSubmit'>) {
       </ToggleGroup>
       <div className="space-y-2">
         <Label htmlFor={noteId}>ملاحظة (اختياري)</Label>
-        <Textarea id={noteId} value={note} maxLength={500} rows={3} onChange={(e) => setNote(e.target.value)} className="rounded-xl text-base" />
+        <Textarea id={noteId} value={note} maxLength={500} rows={3} onChange={(e) => setNote(e.target.value)} className="resize-none rounded-xl text-base" />
       </div>
       <div className="flex gap-2 pt-1 md:justify-end">
         <Button variant="outline" size="lg" onClick={submit}

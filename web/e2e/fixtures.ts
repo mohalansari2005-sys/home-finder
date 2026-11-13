@@ -30,7 +30,7 @@ export function chatEvents(message: string): object[] {
     { type: 'token', text: 'وجدت ' }, { type: 'token', text: 'فيلتين مناسبتين.' }, { type: 'done' }]
 }
 
-export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?: unknown; paused?: boolean; chatNoKey?: boolean; chatDropFirst?: boolean; cardExtras?: Record<number, Record<string, unknown>>; noSuggestions?: boolean; learnerChange?: boolean } = {}) {
+export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?: unknown; paused?: boolean; chatNoKey?: boolean; chatDropFirst?: boolean; cardExtras?: Record<number, Record<string, unknown>>; noSuggestions?: boolean; cardCount?: number; learnerChange?: boolean } = {}) {
   let loggedIn = opts.loggedIn ?? false
   const statuses = new Map<number, string>()
   const prefs = {
@@ -69,7 +69,7 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
     }
     if (url.pathname === '/api/chat/threads') return json([])
     if (url.pathname === '/api/feed') {
-      const items = [card(1, opts.cardExtras?.[1]), card(2, opts.cardExtras?.[2])].map((c) => ({ ...c, family_status: statuses.get(c.id) ?? c.family_status }))
+      const items = Array.from({ length: opts.cardCount ?? 2 }, (_, i) => card(i + 1, opts.cardExtras?.[i + 1])).map((c) => ({ ...c, family_status: statuses.get(c.id) ?? c.family_status }))
         .filter((c) => c.family_status !== 'rejected')
       return json({ items, next_offset: null })
     }
