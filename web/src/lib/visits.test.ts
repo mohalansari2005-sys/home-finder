@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { nextSaturday, tripWarnings } from './visits'
+import { ApiError } from '../api/client'
+import { nextSaturday, photoUploadError, tripWarnings } from './visits'
 
 describe('nextSaturday', () => {
   it('returns the coming Saturday, never today unless it is already past Saturday', () => {
@@ -18,5 +19,13 @@ describe('tripWarnings', () => {
     expect(w.map((x) => x.code)).toEqual(['no_route', 'skipped_no_location', 'precheck_pending'])
     expect(w[0].text).toBe('تعذّر حساب المسار، الترتيب يدوي')
     expect(w[1].text).toBe('تم تخطي عقارين لعدم توفر موقع')
+  })
+})
+
+describe('photoUploadError', () => {
+  it('explains a 413 (proxy body limit) and keeps the generic text otherwise', () => {
+    expect(photoUploadError(new ApiError(413, '<html>'))).toBe('حجم الصورة أكبر من 8 ميغابايت')
+    expect(photoUploadError(new ApiError(500, 'x'))).toBe('تعذّر رفع الصورة. حاولوا مرة أخرى.')
+    expect(photoUploadError(new Error('offline'))).toBe('تعذّر رفع الصورة. حاولوا مرة أخرى.')
   })
 })

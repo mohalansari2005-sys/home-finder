@@ -8,7 +8,7 @@ import { ClockRange } from '../components/visits/Clock'
 import { RouteMap } from '../components/visits/RouteMap'
 import { StopCard } from '../components/visits/StopCard'
 import { formatNumber, formatTripDate, pluralAr } from '../lib/format'
-import { tripWarnings, TRIP_STATUS_AR } from '../lib/visits'
+import { photoUploadError, tripWarnings, TRIP_STATUS_AR } from '../lib/visits'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -160,7 +160,7 @@ export function TripPage() {
             <StopCard key={s.id} stop={s} active={active === s.id}
                       onPatch={(p) => patch.mutate({ stopId: s.id, patch: p }, { onError: () => toast.error('تعذّر حفظ التغيير. حاولوا مرة أخرى.') })}
                       onUpload={(file) => upload.mutate({ stopId: s.id, file }, {
-                        onSuccess: () => toast('تم رفع الصورة'), onError: () => toast.error('تعذّر رفع الصورة. حاولوا مرة أخرى.') })} />
+                        onSuccess: () => toast('تم رفع الصورة'), onError: (e) => toast.error(photoUploadError(e)) })} />
           ))}
         </ol>
       </div>

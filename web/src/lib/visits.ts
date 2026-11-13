@@ -1,4 +1,5 @@
 import { pluralAr } from './format'
+import { ApiError } from '../api/client'
 import type { Trip } from '../api/types'
 
 /** Today's calendar date in Asia/Riyadh as "YYYY-MM-DD". */
@@ -42,3 +43,7 @@ export const CONTACT_STATUSES = [
 export const TRIP_STATUS_AR: Record<string, string> = { planned: 'مخططة', done: 'تمت', cancelled: 'ملغاة' }
 
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024
+
+/** Arabic toast text for a failed visit-photo upload; 413 means the file exceeded the size limit. */
+export const photoUploadError = (e: unknown): string =>
+  e instanceof ApiError && e.status === 413 ? 'حجم الصورة أكبر من 8 ميغابايت' : 'تعذّر رفع الصورة. حاولوا مرة أخرى.'

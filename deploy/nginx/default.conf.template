@@ -20,6 +20,15 @@ server {
   add_header Strict-Transport-Security "max-age=31536000" always;
   root /usr/share/nginx/html;
 
+  # visit photos: the API accepts up to 8 MB; nginx's default 1 MB would answer 413 first
+  location ~ ^/api/visits/stops/[0-9]+/photos$ {
+    client_max_body_size 9m;
+    proxy_pass http://api:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+  }
   location /api/ {
     proxy_pass http://api:8000;
     proxy_set_header Host $host;
