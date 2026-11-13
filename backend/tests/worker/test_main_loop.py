@@ -35,3 +35,26 @@ def test_loop_survives_server_down(monkeypatch):
     ticks = iter(range(3))
     wmain.run_loop(None, Down([]), stop=lambda: next(ticks, None) is None, sleep=slept.append)
     assert slept and all(s >= 30 for s in slept)
+
+
+def test_heartbeat_continues_during_a_long_job(monkeypatch):
+    """M7: a 4-25 minute scrape must not make the Mac look offline (the agent would fall back to a datacenter search)."""
+    import time
+
+    beats = []
+
+    class C(FakeClient):
+        def heartbeat(self, hostname, version, current_job_id): beats.append(current_job_id)
+
+    def slow(deps, t, p):
+        time.sleep(0.45)
+        return {"ok": 1}
+    monkeypatch.setattr(wmain, "dispatch", slow)
+    monkeypatch.setattr(wmain, "_schedule", lambda interval: None)
+    c = C([{"id": 7, "type": "x", "payload": {}}])
+    ticks = iter(range(2))
+    wmain.run_loop(None, c, stop=lambda: next(ticks, None) is None, sleep=lambda s: None, beat_every=0.1)
+    assert beats.count(7) >= 3 and c.done == [(7, {"ok": 1})]
+    n = len(beats)
+    time.sleep(0.3)
+    assert len(beats) == n  # the heartbeat thread stopped with the loop

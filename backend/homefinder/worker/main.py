@@ -1,5 +1,6 @@
 import logging
 import socket
+import threading
 import time
 from collections.abc import Callable
 
@@ -27,8 +28,30 @@ def _schedule(interval_hours: float) -> None:
         scheduler.maybe_schedule(s, interval_hours)
 
 
+def _job_heartbeat(client, hostname: str, state: dict, done: threading.Event, every: float) -> None:
+    """Keeps the Mac 'online' (with its current job id) while a long job runs on the main thread."""
+    while not done.wait(every):
+        job_id = state["job"]
+        if job_id is None:
+            continue
+        try:
+            client.heartbeat(hostname, __version__, job_id)
+        except Exception as e:  # noqa: BLE001
+            log.warning("heartbeat failed: %s", e)
+
+
 def run_loop(deps, client, *, stop: Callable[[], bool], sleep=time.sleep, poll_interval: float = 5.0,
-             interval_hours: float = 4.0, hostname: str = "mac") -> None:
+             interval_hours: float = 4.0, hostname: str = "mac", beat_every: float = HEARTBEAT_EVERY) -> None:
+    state: dict = {"job": None}
+    done = threading.Event()
+    threading.Thread(target=_job_heartbeat, args=(client, hostname, state, done, beat_every), daemon=True).start()
+    try:
+        _run_loop(deps, client, stop, sleep, poll_interval, interval_hours, hostname, state)
+    finally:
+        done.set()
+
+
+def _run_loop(deps, client, stop, sleep, poll_interval, interval_hours, hostname, state) -> None:
     last_beat = -1e9
     while not stop():
         try:
@@ -46,6 +69,7 @@ def run_loop(deps, client, *, stop: Callable[[], bool], sleep=time.sleep, poll_i
             continue
         job = claimed[0]
         log.info("job %s %s", job["id"], job["type"])
+        state["job"] = job["id"]
         try:
             result = dispatch(deps, job["type"], job["payload"])
             client.complete(job["id"], result)
@@ -55,6 +79,8 @@ def run_loop(deps, client, *, stop: Callable[[], bool], sleep=time.sleep, poll_i
                 client.fail(job["id"], f"{type(e).__name__}: {e}")
             except Exception:  # noqa: BLE001
                 log.warning("could not report failure; job will be reclaimed after 15 min")
+        finally:
+            state["job"] = None
 
 
 def build_deps(client: WorkerClient) -> WorkerDeps:
