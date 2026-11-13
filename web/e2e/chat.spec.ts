@@ -89,3 +89,14 @@ test('network failure shows retry and recovers', async ({ page }, info) => {
   await expect(panel(page).getByText('وجدت فيلتين مناسبتين.')).toBeVisible()
   await expect(panel(page).getByRole('alert')).toHaveCount(0)
 })
+
+test('at 1280px the chat is not docked and the floating button shows', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'width override only meaningful once')
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await mockApi(page, { loggedIn: true })
+  await page.goto('/')
+  await expect(page.getByRole('article').first()).toBeVisible()
+  await expect(page.getByTestId('chat-dock')).toHaveCount(0)
+  await page.getByRole('button', { name: 'اسأل المساعد' }).click()
+  await expect(page.getByRole('dialog', { name: 'المساعد' })).toBeVisible()
+})

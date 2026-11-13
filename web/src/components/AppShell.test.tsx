@@ -54,8 +54,8 @@ describe('AppShell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'فتح المساعد' }))
     expect(screen.getByRole('textbox', { name: 'رسالتك' })).toHaveFocus()
   })
-  it('narrow desktop (< 1280px) uses the floating button instead of the dock', () => {
-    setWidth(1240)
+  it('narrow desktop (< 1440px) uses the floating button instead of the dock', () => {
+    setWidth(1280)
     shell()
     expect(screen.queryByTestId('chat-dock')).toBeNull()
     expect(screen.getByRole('button', { name: 'اسأل المساعد' })).toBeInTheDocument()
