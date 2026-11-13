@@ -14,3 +14,4 @@ backend/.venv/
 web/test-results/
 web/playwright-report/
 *.egg-info/
+.claude/
