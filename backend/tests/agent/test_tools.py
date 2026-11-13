@@ -11,7 +11,8 @@ def tools():
 
 def test_tool_names():
     assert set(tools()) == {"get_preferences", "update_preferences", "search_listings", "get_listing",
-                            "compare_listings", "request_scrape"}
+                            "compare_listings", "request_scrape", "get_filter_suggestions",
+                            "apply_filter_suggestion"}
 
 
 def test_get_preferences_tool(db):
@@ -95,3 +96,19 @@ def test_request_scrape_offline_uses_fallback(db, monkeypatch):
     monkeypatch.setattr(fallback_search, "run", lambda sf: {"ingested": 3})
     out = json.loads(tools()["request_scrape"].invoke({"note": ""}))
     assert out == {"mode": "fallback", "ingested": 3}
+
+
+def test_filter_suggestion_tools(db):
+    from homefinder.models import Reaction
+    for a in [18, 20, 22, 25, 30]:
+        l = Listing(building_age_years=a, family_status="rejected"); db.add(l); db.flush()
+        db.add(Reaction(listing_id=l.id, kind="reject", reason_code="too_old"))
+    db.commit()
+    t = tools()
+    out = json.loads(t["get_filter_suggestions"].invoke({}))
+    assert [x["code"] for x in out["suggestions"]] == ["too_old"]
+    assert json.loads(t["apply_filter_suggestion"].invoke({"code": "nope"}))["ok"] is False
+    assert json.loads(t["apply_filter_suggestion"].invoke({"code": "too_old"}))["ok"] is True
+    db.expire_all()
+    assert db.get(Preferences, 1).hard_filters["building_age_max"] == 21
+    assert db.query(Job).filter_by(type="rescore_all").count() == 1

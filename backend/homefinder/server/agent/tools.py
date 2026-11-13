@@ -9,6 +9,7 @@ from homefinder.models import Listing, WorkerStatus
 from homefinder.scoring import effective_targets, effective_weights
 from homefinder.server.agent import fallback_search
 from homefinder.server.routes.listings import _photo_urls, _price_drops, card
+from homefinder.server.routes.suggestions import apply_suggestion, current_suggestions
 from homefinder.server.routes.settings import PrefsPatch, apply_prefs_patch
 from homefinder.textnorm import normalize_district
 from homefinder.worker.scheduler import ENABLED_SOURCES
@@ -108,4 +109,24 @@ def make_tools(session_factory):
                 return _j({"mode": "queued"})
         return _j({"mode": "fallback", **fallback_search.run(session_factory)})
 
-    return [get_preferences, update_preferences, search_listings, get_listing, compare_listings, request_scrape]
+    @tool
+    def get_filter_suggestions() -> str:
+        """يعرض الفلاتر المقترحة بناءً على أسباب الاستبعاد المتكررة."""
+        with session_factory() as s:
+            return _j({"suggestions": current_suggestions(s)})
+
+    @tool
+    def apply_filter_suggestion(code: str) -> str:
+        """يطبّق اقتراح فلتر حالي حسب رمزه (too_old, narrow_street, overpriced, far)."""
+        try:
+            with session_factory() as s:
+                sug = apply_suggestion(s, code)
+                if sug is None:
+                    return _j({"ok": False, "error": "no such suggestion"})
+                jobs.enqueue(s, "rescore_all", {}, dedupe_key="rescore_all")
+            return _j({"ok": True, "applied": sug})
+        except ValueError as e:
+            return _j({"ok": False, "error": str(e)})
+
+    return [get_preferences, update_preferences, search_listings, get_listing, compare_listings, request_scrape,
+            get_filter_suggestions, apply_filter_suggestion]

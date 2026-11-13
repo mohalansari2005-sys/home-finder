@@ -2,12 +2,14 @@ from datetime import timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource, Photo, PriceHistory, Reaction
 from homefinder.server.deps import get_db, require_family
+from homefinder.suggestions import REASON_CODES
 
 router = APIRouter(dependencies=[Depends(require_family)])
 
@@ -103,9 +105,18 @@ def detail(listing_id: int, s: Session = Depends(get_db)):
 class ReactBody(BaseModel):
     kind: Literal["bookmark", "reject", "unreject"]
     reason_code: str | None = None
-    note: str | None = None
+    note: str | None = Field(None, max_length=500)
+
+    @field_validator("reason_code")
+    @classmethod
+    def _known_reason(cls, v: str | None) -> str | None:
+        if v is not None and v not in REASON_CODES:
+            raise ValueError(f"reason_code must be one of {REASON_CODES}")
+        return v
 
 
+LEARN_KINDS = ["bookmark", "reject", "visit_rating"]
+LEARN_EVERY = 10
 NEXT_STATUS = {"bookmark": "bookmarked", "reject": "rejected", "unreject": "seen"}
 
 
@@ -115,7 +126,15 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
     if l is None:
         raise HTTPException(404)
     l.family_status = NEXT_STATUS[body.kind]
-    s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code, note=body.note))
+    reject = body.kind == "reject"  # a reason and note only mean something on a reject
+    s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code if reject else None,
+                   note=body.note if reject else None))
+    s.flush()
+    since = prefs.get_or_create(s).learned_through_reaction_id
+    fresh = s.scalar(select(func.count()).select_from(Reaction).where(
+        Reaction.id > since, Reaction.kind.in_(LEARN_KINDS)))
+    if fresh >= LEARN_EVERY:
+        jobs.enqueue(s, "learn", {}, dedupe_key="learn")
     return {"family_status": l.family_status}
 
 
