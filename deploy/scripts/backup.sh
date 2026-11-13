@@ -3,7 +3,9 @@ set -euo pipefail
 cd /opt/homefinder
 DIR=/var/backups/homefinder
 STAMP=$(date +%F)
-docker compose -f deploy/docker-compose.yml --env-file .env exec -T db pg_dump -U hf homefinder | gzip > "$DIR/db-$STAMP.sql.gz"
+# write to a temp file first: a failed dump must never replace a good one or count towards the 14 kept
+docker compose -f deploy/docker-compose.yml --env-file .env exec -T db pg_dump -U hf homefinder | gzip > "$DIR/.db-$STAMP.tmp"
+mv "$DIR/.db-$STAMP.tmp" "$DIR/db-$STAMP.sql.gz"
 ls -1t "$DIR"/db-*.sql.gz | tail -n +15 | xargs -r rm --
 # Listing photos are not backed up: they are public downloads and can be fetched again (and they would fill the disk).
 rm -f "$DIR"/photos-*.tgz

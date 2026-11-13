@@ -72,9 +72,19 @@ Open Settings and confirm the worker shows as متصل (online). The script inst
 
 ## 8. Operations
 - Logs: `docker compose -f deploy/docker-compose.yml logs -f api` on the server; `~/Library/Logs/homefinder/` on the Mac.
-- Restore a backup: `gunzip -c db-DATE.sql.gz | docker compose exec -T db psql -U hf homefinder`.
+- Restore a backup (the dump contains the whole schema, so it must go into an **empty** database; piping it into the live one fails on the first `CREATE`). First stop the Mac worker so nothing holds a connection (`launchctl bootout gui/$(id -u)/com.homefinder.worker`; restart it afterwards with `deploy/worker/install-worker.sh`), then on the server:
+  ```bash
+  cd /opt/homefinder && C="docker compose -f deploy/docker-compose.yml --env-file .env"
+  $C stop api
+  $C exec -T db dropdb -U hf homefinder && $C exec -T db createdb -U hf homefinder
+  gunzip -c /var/backups/homefinder/db-DATE.sql.gz | $C exec -T db psql -q -v ON_ERROR_STOP=1 -U hf homefinder
+  $C start api
+  ```
+  Visit photos: `docker run --rm -v homefinder_visit_photos:/p -v /var/backups/homefinder:/b alpine tar xzf /b/visit-photos-DATE.tgz -C /p`. Listing photos are not backed up; the worker's daily catch-up downloads them again.
+- Once a month, prove the backups restore: `$C exec -T db createdb -U hf hf_restore_test`, restore the newest dump into it as above (with `hf_restore_test` instead of `homefinder`), check `$C exec -T db psql -U hf hf_restore_test -c "SELECT count(*) FROM listings"`, then `$C exec -T db dropdb -U hf hf_restore_test`.
+- Off-box backups (strongly recommended: with no `STORAGE_BOX` a dead or full disk takes the backups with it). Order a Hetzner Storage Box, enable SSH support in its settings, then on the VPS as root: `ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519`, `ssh-copy-id -p 23 -s u123456@u123456.your-storagebox.de`, run `ssh -p 23 u123456@u123456.your-storagebox.de ls` once to accept the host key, add `STORAGE_BOX=u123456@u123456.your-storagebox.de` to `/opt/homefinder/.env`, then run `/opt/homefinder/deploy/scripts/backup.sh` once by hand and check the files arrived in `homefinder-backups/`.
 - Resume a paused adapter. An adapter pauses on an Aqar/Haraj block ("… blocked: HTTP 403"), on "aqar app-version outdated" and when a batch looks unhealthy. After an app-version bump: set `AQAR_APP_VERSION` in `backend/.env` on the Mac, run `launchctl kickstart -k gui/$(id -u)/com.homefinder.worker`, then press «استئناف» in Settings → الحالة. The server-side chat fallback search also reads `AQAR_APP_VERSION`, so put it in the server `.env` too and run `docker compose -f deploy/docker-compose.yml --env-file .env up -d api`. After a block, wait some hours before resuming.
 - After upgrading to the coverage-damped score (review fix I4), rescore once so stored scores use the new formula (run on the Mac against the server DB): `cd backend && .venv/bin/python -m homefinder.cli rescore`. A fresh install needs nothing.
 - Keep the Mac awake on power: System Settings, Battery, Options, "Prevent automatic sleeping on power adapter when the display is off".
-- Backups run nightly at 03:15 (database dump, 14 kept) and weekly on Friday (family visit photos, 4 kept). Listing photos are **not** backed up (they are re-downloadable and would fill the 40 GB disk); the first backup run after this change deletes the old `photos-*.tgz` files. Set `STORAGE_BOX` in `.env` for an off-box rsync copy (see below).
+- Backups run nightly at 03:15 (database dump, 14 kept) and weekly on Friday (family visit photos, 4 kept). Listing photos are **not** backed up (they are re-downloadable and would fill the 40 GB disk); the first backup run after this change deletes the old `photos-*.tgz` files. Set `STORAGE_BOX` in `.env` for an off-box rsync copy (see the Off-box backups item above).
 - Disk: Settings → الحالة shows the free space. Photos are fetched only for listings that pass the filters (6 per listing, 1280 px), and a weekly cron (`/etc/cron.d/homefinder-prune`, installed by `server-hardening.sh`) runs `python -m homefinder.cli prune-photos` in the api container to delete photos of listings removed, merged or rejected more than 30 days ago. Run it by hand with `docker compose -f deploy/docker-compose.yml --env-file .env exec -T api python -m homefinder.cli prune-photos`.
