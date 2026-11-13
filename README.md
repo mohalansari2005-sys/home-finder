@@ -10,7 +10,7 @@ We didn't need another listings site. We needed something to do the tedious part
 
 ## What it does
 
-| Problem | بيتنا |
+| Problem | What the app does |
 |---|---|
 | Listings scattered across sites, reposted by many brokers | Scrapes Aqar and Haraj on a schedule and merges duplicates |
 | Messy ads with missing sizes and prices buried in text | Extracts what it can from the text and labels the rest as unknown |
@@ -22,7 +22,7 @@ We didn't need another listings site. We needed something to do the tedious part
 | Chaotic visit days | Trips grouped by district, with driving order, time slots, WhatsApp links and a pre-visit check that the ads are still live |
 
 The app also has:
-- **An Arabic chat assistant.** You talk to it the way you'd talk to the family group. "نبي فيلا في النرجس أو الياسمين بحدود مليونين، والمدرسة أهم من الدوام" (a villa in Al Narjis or Al Yasmin, around two million, school matters more than work) updates the filters and weights and replies with the best matches as cards you can open. It can also explain a score, compare homes or plan a visit. Every change it makes shows up in the settings history, and replies stream in as they're written.
+- **An Arabic chat assistant.** You talk to it the way you'd talk to the family group. "We want a villa in Al Narjis or Al Yasmin for around two million, and the school matters more than work" updates the filters and weights and replies with the best matches as cards you can open. It can also explain a score, compare homes or plan a visit. Every change it makes shows up in the settings history, and replies stream in as they're written.
 - **A map.** Price pins are coloured by score, with saved homes highlighted, and sit next to the school, work and university markers, so you can see at a glance which good matches cluster near the places that matter.
 - **Compare.** Pick 2–4 homes for a side-by-side table of price, price per metre, size, rooms, building age and every drive time. The best value in each row is highlighted, and missing data is flagged rather than hidden.
 - **Settings.** Set the four places, the hard filters and how much each factor matters. You can lock a weight so the learner leaves it alone, and see a history of every change, whether it came from you, the assistant or the learner. A status panel shows when each source last ran, whether the Mac worker is online, and any failed jobs.
@@ -44,7 +44,7 @@ Each listing goes through two steps, and both are plain code with no AI involved
 
    The score is the weighted average of those numbers, times 100. Factors the ad doesn't mention are left out instead of guessed, and they're listed as missing.
 
-Every score comes with its breakdown: which factors pushed it up, which pulled it down, and what's unknown. That's what powers "لماذا 86؟" (why 86?) on the listing page. When preferences change, every listing is rescored straight away on the server, even if the Mac is asleep.
+Every score comes with its breakdown: which factors pushed it up, which pulled it down, and what's unknown. That's what powers "why 86?" on the listing page. When preferences change, every listing is rescored straight away on the server, even if the Mac is asleep.
 
 ### Learning
 
@@ -53,15 +53,15 @@ Learning adjusts the weights from what the family actually does. Saves count as 
 - **When it runs:** after every 10 new reactions, and only once there are at least 5 likes and 5 dislikes.
 - **How it learns:** on the Mac, a logistic regression finds which factors separate liked homes from rejected ones.
 - **How carefully:** the weights move only 30% of the way toward what the model suggests, and each weight changes by at most 20% per run. Weights you've locked are never touched. Your overall emphasis stays the same, because it redistributes weight between factors instead of inflating it.
-- **What you see:** every change lands in the settings history with an Arabic explanation, such as «زادت أهمية القرب من المدرسة بناءً على تفاعلكم مع العقارات» (closeness to the school became more important, based on how you reacted to listings).
+- **What you see:** every change lands in the settings history with an Arabic explanation, such as "closeness to the school became more important, based on how you reacted to listings".
 
-Reject reasons feed **filter suggestions**, which are simple rules rather than a model. If at least 5 of the last 20 rejects share a reason, and the relevant value is known for at least 3 of them, the app proposes a filter. For example, «قديم» (too old) leads to a maximum building age just under the median age of the rejected homes. It only proposes; nothing changes until someone taps «تطبيق» (apply), and a dismissed suggestion stays hidden until 5 new rejects come in for that reason.
+Reject reasons feed **filter suggestions**, which are simple rules rather than a model. If at least 5 of the last 20 rejects share a reason, and the relevant value is known for at least 3 of them, the app proposes a filter. For example, "too old" leads to a maximum building age just under the median age of the rejected homes. It only proposes; nothing changes until someone taps "apply", and a dismissed suggestion stays hidden until 5 new rejects come in for that reason.
 
 ### The LLM and the LangGraph agent
 
 The LLM handles two jobs that need reading and conversation. It never invents facts, and everything it says comes from the database through tools.
 
-**1. Reading ads (worker, small model).** Listings are often missing fields that are written somewhere in the description, such as «درج داخلي، غرفة سائق، الشارع ٢٠م» (inside staircase, driver room, 20 m street). For each listing, the worker asks the small model (`gpt-5-mini` by default) for only the fields that are still empty, using OpenAI structured outputs so the reply is checked JSON. Every value is cleaned and range-checked before it's saved. Anything the model can't find stays unknown.
+**1. Reading ads (worker, small model).** Listings are often missing fields that are written somewhere in the description, such as "inside staircase, driver room, 20 m street". For each listing, the worker asks the small model (`gpt-5-mini` by default) for only the fields that are still empty, using OpenAI structured outputs so the reply is checked JSON. Every value is cleaned and range-checked before it's saved. Anything the model can't find stays unknown.
 
 Plain code runs before the model where possible: Haraj prices and areas are parsed with regular expressions. The model fills in only what's left.
 
@@ -77,12 +77,12 @@ Plain code runs before the model where possible: Haraj prices and areas are pars
 M5 adds two visit-planning tools. The system prompt is in Arabic and sets the ground rules:
 - Speak Arabic.
 - Never make up listings, prices or distances.
-- Say «غير مذكور» (not mentioned) for missing values.
+- Say "not mentioned" for missing values.
 - Confirm every preference change in one sentence.
 
 Conversations are saved with LangGraph's Postgres checkpointer, so a thread can be picked up on another device. Replies stream to the browser over server-sent events: words appear as they're written, and listing cards appear as soon as a tool returns them.
 
-**Why an agent instead of a search form?** The family's needs come out naturally as sentences mixing filters, priorities and questions. One example is "نبي فيلا قريبة من المدرسة بس مو قديمة، ووش الفرق بين هذي والي قبلها؟" (we want a villa close to the school but not old, and what's the difference between this one and the last?). The agent turns that into precise tool calls, against the same scoring and filters as the rest of the app. It also explains the results, because it reads the score breakdowns instead of guessing.
+**Why an agent instead of a search form?** The family's needs come out naturally as sentences mixing filters, priorities and questions. One example is "we want a villa close to the school but not old, and what's the difference between this one and the last?" The agent turns that into precise tool calls, against the same scoring and filters as the rest of the app. It also explains the results, because it reads the score breakdowns instead of guessing.
 
 **Why this split?** Scoring, filters and learning are deterministic, testable and free, so the app keeps working with no API key at all. The LLM is used only where language is the actual problem: messy ad text and free-form requests.
 
