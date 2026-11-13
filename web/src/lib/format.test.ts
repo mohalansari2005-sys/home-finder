@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatArea, formatDate, formatMinutes, formatPrice, formatRooms, formatYears, pluralAr, toDate } from './format'
+import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatYears, pluralAr, toDate } from './format'
 
 describe('format', () => {
   it('formats price with western digits and riyal suffix', () => {
@@ -59,5 +59,24 @@ describe('dates', () => {
     expect(s).toMatch(/15/)
     expect(s).toMatch(/2026/)
     expect(s).not.toMatch(/[٠-٩]/)
+  })
+})
+
+describe('formatRelative', () => {
+  const now = new Date('2026-11-13T12:00:00Z')
+  const ago = (ms: number) => new Date(now.getTime() - ms)
+  const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR
+  it('uses Arabic plural forms', () => {
+    expect(formatRelative(ago(20_000), now)).toBe('الآن')
+    expect(formatRelative(ago(MIN), now)).toBe('قبل دقيقة')
+    expect(formatRelative(ago(2 * MIN), now)).toBe('قبل دقيقتين')
+    expect(formatRelative(ago(5 * MIN), now)).toBe('قبل 5 دقائق')
+    expect(formatRelative(ago(2 * HOUR), now)).toBe('قبل ساعتين')
+    expect(formatRelative(ago(11 * HOUR), now)).toBe('قبل 11 ساعة')
+    expect(formatRelative(ago(DAY), now)).toBe('أمس')
+    expect(formatRelative(ago(3 * DAY), now)).toBe('قبل 3 أيام')
+  })
+  it('falls back to a date after a month', () => {
+    expect(formatRelative(ago(45 * DAY), now)).toMatch(/2026/)
   })
 })

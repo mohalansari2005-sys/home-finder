@@ -59,3 +59,27 @@ export const FACING_AR: Record<string, string> = {
   north: 'شمال', south: 'جنوب', east: 'شرق', west: 'غرب',
   northeast: 'شمالية شرقية', northwest: 'شمالية غربية', southeast: 'جنوبية شرقية', southwest: 'جنوبية غربية',
 }
+
+const MIN = 60_000
+const HOUR = 60 * MIN
+const DAY = 24 * HOUR
+
+/** "قبل ساعتين", "أمس", ... Falls back to a Gregorian date after 30 days. */
+export function formatRelative(d: Date, now: Date = new Date()): string {
+  const diff = Math.max(0, now.getTime() - d.getTime())
+  if (diff < MIN) return 'الآن'
+  if (diff < HOUR) {
+    const n = Math.floor(diff / MIN), c = nf.format(n)
+    return `قبل ${pluralAr(n, { zero: '', one: 'دقيقة', two: 'دقيقتين', few: `${c} دقائق`, many: `${c} دقيقة`, other: `${c} دقيقة` })}`
+  }
+  if (diff < DAY) {
+    const n = Math.floor(diff / HOUR), c = nf.format(n)
+    return `قبل ${pluralAr(n, { zero: '', one: 'ساعة', two: 'ساعتين', few: `${c} ساعات`, many: `${c} ساعة`, other: `${c} ساعة` })}`
+  }
+  if (diff < 30 * DAY) {
+    const n = Math.floor(diff / DAY), c = nf.format(n)
+    if (n === 1) return 'أمس'
+    return `قبل ${pluralAr(n, { zero: '', one: 'يوم', two: 'يومين', few: `${c} أيام`, many: `${c} يومًا`, other: `${c} يوم` })}`
+  }
+  return formatDate(d)
+}

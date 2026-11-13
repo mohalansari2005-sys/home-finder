@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from './client'
-import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, ReactKind, SystemStatus } from './types'
+import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, PreferenceChange, PreferencePatch, Preferences, ReactKind, SystemStatus } from './types'
 
 export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => api<{ ok: boolean }>('/api/me'), retry: false })
 
@@ -24,6 +24,44 @@ export const useMapPoints = () => useQuery({ queryKey: ['map'], queryFn: () => a
 export const usePlaces = () => useQuery({ queryKey: ['places'], queryFn: () => api<Place[]>('/api/places') })
 export const useStatus = () =>
   useQuery({ queryKey: ['status'], queryFn: () => api<SystemStatus>('/api/status'), refetchInterval: 30_000 })
+
+export const usePreferences = () => useQuery({ queryKey: ['preferences'], queryFn: () => api<Preferences>('/api/preferences') })
+export const usePreferenceChanges = () =>
+  useQuery({ queryKey: ['preference-changes'], queryFn: () => api<PreferenceChange[]>('/api/preferences/changes?limit=20') })
+
+export function useSavePreferences() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: PreferencePatch) => api<Preferences>('/api/preferences', { method: 'PUT', body: JSON.stringify(patch) }),
+    onSuccess: (out) => {
+      qc.setQueryData(['preferences'], out)
+      qc.invalidateQueries({ queryKey: ['preference-changes'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['status'] })
+      // the server rescores in the background; refetch shortly so the feed order catches up
+      setTimeout(() => qc.invalidateQueries({ queryKey: ['feed'] }), 2000)
+    },
+  })
+}
+
+export function useSavePlaces() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (places: Place[]) => api<Place[]>('/api/places', { method: 'PUT', body: JSON.stringify(places) }),
+    onSuccess: (out) => {
+      qc.setQueryData(['places'], out)
+      qc.invalidateQueries({ queryKey: ['map'] })
+    },
+  })
+}
+
+export function useResumeAdapter() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (source: string) => api<void>(`/api/adapters/${source}/resume`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['status'] }),
+  })
+}
 
 export function useReact() {
   const qc = useQueryClient()
