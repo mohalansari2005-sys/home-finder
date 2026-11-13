@@ -53,3 +53,20 @@ def test_listing_without_location(db):
     r = ingest_raw(db, raw(lat=None, lng=None).model_copy(update={"geo_precision": None})); db.commit()
     l = db.get(Listing, r.listing_id)
     assert l.geom is None and l.geo_precision == "none"
+
+
+def test_secondary_source_price_does_not_flip_a_merged_listing(db):
+    """After a merge, only the primary (oldest) source drives price and history; otherwise two sources that quote
+    slightly different prices would flap the price and fake a price drop on every scrape."""
+    first = ingest_raw(db, raw(price=2_000_000)); db.commit()
+    haraj = RawListing(source="haraj", source_id="h1", url="https://haraj.com.sa/h1",
+                       fields=CanonicalFields(property_type="villa", price=1_950_000, lat=24.83, lng=46.65), geo_precision="approximate")
+    other = ingest_raw(db, haraj); db.commit()
+    l = db.get(Listing, other.listing_id)
+    l.merged_into_id = first.listing_id
+    db.query(ListingSource).filter_by(source="haraj").update({"listing_id": first.listing_id}); db.commit()
+    again = ingest_raw(db, haraj); db.commit()
+    assert again.listing_id == first.listing_id and not again.price_changed
+    assert db.get(Listing, first.listing_id).price == 2_000_000 and count(db, PriceHistory) == 2  # 1 each, none added
+    ingest_raw(db, raw(price=1_900_000)); db.commit()  # the primary source's change still counts
+    assert db.get(Listing, first.listing_id).price == 1_900_000

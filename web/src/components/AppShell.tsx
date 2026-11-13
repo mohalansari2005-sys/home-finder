@@ -8,7 +8,9 @@ import {
 } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { useBreakpoint } from '../lib/breakpoint'
+import { useBreakpoint, useChatLayout } from '../lib/breakpoint'
+import { ChatDock } from './chat/ChatDock'
+import { ChatOverlay } from './chat/ChatOverlay'
 import { NAV_ITEMS } from './nav'
 
 function MenuToggle() {
@@ -48,6 +50,7 @@ function SideNav({ toggle }: { toggle: boolean }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const bp = useBreakpoint()
+  const layout = useChatLayout()
   const { pathname } = useLocation()
   const main = useRef<HTMLElement>(null)
   useEffect(() => { main.current?.focus({ preventScroll: true }) }, [pathname])
@@ -82,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SidebarInset className="min-w-0">
         <main ref={main} tabIndex={-1} className="h-dvh min-w-0 overflow-y-auto outline-none">{children}</main>
       </SidebarInset>
+      {pathname !== '/assistant' && (layout === 'docked' ? <ChatDock /> : <ChatOverlay />)}
     </SidebarProvider>
     </TooltipProvider>
   )

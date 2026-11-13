@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from homefinder.sanity import AGE, BUILT, LAND, PRICE, ROOMS, STREET, clean_float, clean_int, parse_number
 from homefinder.schemas import CanonicalFields, HealthReport, RawListing, SearchQuery
 from homefinder.textnorm import normalize_district
-from homefinder.worker.sources.aqar_queries import districts_body, find_body
+from homefinder.worker.sources.aqar_queries import districts_body, find_body, listing_body
 from homefinder.worker.sources.aqar_transport import (CurlCffiTransport, FallbackTransport, PlaywrightTransport,
                                                        Transport)
 from homefinder.worker.sources.base import Pacer, default_health
@@ -17,7 +17,7 @@ IMAGE_BASE = "https://images.aqar.fm/webp/640x0/props/"  # verified HTTP 200 ima
 CATEGORY_BY_TYPE = {"villa": 3, "apartment": 6, "house": 9, "floor": 22}
 TYPE_BY_CATEGORY = {v: k for k, v in CATEGORY_BY_TYPE.items()}
 CITY_IDS = {"الرياض": 21}
-FACING = {1: "north", 2: "east", 3: "south", 4: "west", 5: "northeast", 6: "southeast", 7: "southwest", 8: "northwest"}
+FACING = {1: "north", 2: "east", 3: "west", 4: "south", 5: "northeast", 6: "southeast", 7: "southwest", 8: "northwest"}
 MULTI_STREET = {9: 3, 10: 4}
 AGE_ZERO_MEANS_NEW = False  # probe: 15/20 listings have age 0, almost none say "new" -> 0 means unknown
 PAGE = 20
@@ -131,8 +131,18 @@ class AqarAdapter:
                         break
 
     def fetch(self, source_id: str) -> RawListing | None:
-        rows = self._post(find_body(0, {"id": {"eq": int(source_id)}}, size=1))["data"]["Web"]["find"]["listings"] or []
-        return parse_listing(rows[0]) if rows and str(rows[0]["id"]) == source_id else None
+        """By-id lookup via Web.listing(id). None = gone: "Listing not found", or present but `published` is falsy.
+        The response has no extended_details, so villa built area is None (ingest never overwrites known fields with None)."""
+        resp = self._post(listing_body(int(source_id)))
+        listing = ((resp.get("data") or {}).get("Web") or {}).get("listing")
+        if listing is None:
+            errors = resp.get("errors") or []
+            if any(e.get("code") == "Listing not found" for e in errors):
+                return None
+            raise RuntimeError(f"aqar listing({source_id}) unexpected response: {errors}")
+        if not listing.get("published"):
+            return None
+        return parse_listing(listing)
 
     def health(self, sample: list[RawListing]) -> HealthReport:
         return default_health(sample)

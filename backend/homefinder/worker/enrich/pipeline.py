@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 
 from homefinder import jobs, prefs
+from homefinder.dedupe import dedupe_and_merge
 from homefinder.models import Listing, ListingSource
 from homefinder.rescore import apply_score
 from homefinder.usage import BudgetExceeded
@@ -55,4 +56,13 @@ def enrich_listing(deps, listing_id: int) -> dict:
         photos = fetch_photos(deps.http, deps.photo_sink, listing_id, urls)
         with deps.session_factory() as s:
             s.get(Listing, listing_id).photos_fetched = True
-    return {"commutes": commutes, "photos": photos, "requeued": requeue}
+    result = {"commutes": commutes, "photos": photos, "requeued": requeue}
+    try:
+        with deps.session_factory() as s:
+            keep = dedupe_and_merge(s, listing_id)
+            if keep:
+                apply_score(s.get(Listing, keep), prefs.get_or_create(s))
+                result["merged_into"] = keep
+    except Exception as e:  # noqa: BLE001 — a dedupe problem must not fail enrichment; it is retried on the next enrich
+        log.warning("enrich %s: dedupe failed: %s", listing_id, e)
+    return result
