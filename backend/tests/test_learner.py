@@ -94,3 +94,13 @@ def test_unreject_removes_the_label(db):
 def test_learn_job_is_registered(db):
     from homefinder.worker.handlers import HANDLERS
     assert "learn" in HANDLERS
+
+
+def test_skip_records_the_attempt(db):
+    ids = []
+    for _ in range(6):
+        l = Listing(price=1_000_000); db.add(l); db.flush(); r = Reaction(listing_id=l.id, kind="bookmark"); db.add(r); db.flush(); ids.append(r.id)
+    db.commit()
+    assert run_learn(db) == {"skipped": "need both classes"}
+    p = db.get(Preferences, 1)
+    assert p.learn_attempted_through_reaction_id == max(ids) and p.learned_through_reaction_id == 0

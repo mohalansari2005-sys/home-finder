@@ -57,3 +57,25 @@ def test_react_validation(db, family):
     db.expire_all()
     last = db.query(Reaction).order_by(Reaction.id.desc()).first()
     assert last.kind == "bookmark" and last.reason_code is None and last.note is None  # ignored unless reject
+
+
+def _bookmark(family, db):
+    l = Listing(); db.add(l); db.commit()
+    return family.post(f"/api/listings/{l.id}/react", json={"kind": "bookmark"})
+
+
+def test_skipped_learn_does_not_requeue_on_every_reaction(db, family):
+    from homefinder.learner import run_learn
+    from homefinder.models import Reaction
+    for _ in range(10):
+        _bookmark(family, db)
+    assert db.query(Job).filter_by(type="learn").count() == 1
+    assert run_learn(db) == {"skipped": "need both classes"}  # only bookmarks
+    db.query(Job).filter_by(type="learn").update({"status": "done"}); db.commit()
+    attempted = db.get(Preferences, 1).learn_attempted_through_reaction_id
+    assert attempted == db.query(Reaction).order_by(Reaction.id.desc()).first().id
+    for _ in range(9):
+        _bookmark(family, db)
+    assert db.query(Job).filter_by(type="learn", status="pending").count() == 0
+    _bookmark(family, db)  # the 10th new reaction since the attempt
+    assert db.query(Job).filter_by(type="learn", status="pending").count() == 1

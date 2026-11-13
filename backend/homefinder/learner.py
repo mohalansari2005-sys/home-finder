@@ -89,6 +89,8 @@ def run_learn(s: Session) -> dict:
     p = prefs_mod.get_or_create(s)
     X, y, sw, factors, reacts = _dataset(s)
     if len(y) == 0 or min((y == 1).sum(), (y == 0).sum()) < MIN_EACH_CLASS:
+        if reacts:  # remember the attempt so the server doesn't re-trigger on every later reaction
+            p.learn_attempted_through_reaction_id = max(r.id for r, _ in reacts)
         return {"skipped": "need both classes"}
     before = snapshot(p)
     old = effective_weights(p.weights)

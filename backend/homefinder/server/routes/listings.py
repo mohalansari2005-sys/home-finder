@@ -150,7 +150,8 @@ def react(listing_id: int, body: ReactBody, s: Session = Depends(get_db)):
     s.add(Reaction(listing_id=l.id, kind=body.kind, reason_code=body.reason_code if reject else None,
                    note=body.note if reject else None))
     s.flush()
-    since = prefs.get_or_create(s).learned_through_reaction_id
+    pref = prefs.get_or_create(s)
+    since = max(pref.learned_through_reaction_id, pref.learn_attempted_through_reaction_id)
     fresh = s.scalar(select(func.count()).select_from(Reaction).where(
         Reaction.id > since, Reaction.kind.in_(LEARN_KINDS)))
     if fresh >= LEARN_EVERY:
