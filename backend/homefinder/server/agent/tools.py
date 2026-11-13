@@ -73,11 +73,15 @@ def make_tools(session_factory):
 
     @tool
     def search_listings(district: str | None = None, max_price: int | None = None, min_bedrooms: int | None = None,
-                        property_type: str | None = None, sort: str = "score", limit: int = 5) -> str:
-        """يبحث في العقارات المحفوظة (غير المستبعدة). sort: score | price | newest. الحد الأقصى 10."""
+                        property_type: str | None = None, sort: str = "score", limit: int = 5,
+                        include_filtered: bool = False) -> str:
+        """يبحث في العقارات المحفوظة المطابقة لشروط العائلة (غير المستبعدة). sort: score | price | newest. الحد الأقصى 10.
+        include_filtered=true يضيف العقارات التي أخفتها الفلاتر (فقط إذا طلبت العائلة ذلك)."""
         with session_factory() as s:
             q = select(Listing).where(Listing.merged_into_id.is_(None), Listing.status == "active",
                                       Listing.family_status != "rejected")
+            if not include_filtered:  # the agent must not recommend what the feed hides (over budget, excluded district)
+                q = q.where(Listing.passes_filters.is_(True))
             if max_price:
                 q = q.where(Listing.price <= max_price)
             if min_bedrooms:

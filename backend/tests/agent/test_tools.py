@@ -194,3 +194,10 @@ def test_a_rejected_change_does_not_use_up_the_turn(db):
     t = tools()
     assert json.loads(t["update_preferences"].invoke({"hard_filters": {"price_max": 5}}))["ok"] is False
     assert json.loads(t["update_preferences"].invoke({"hard_filters": {"price_max": 2_000_000}}))["ok"] is True
+
+
+def test_search_listings_hides_what_the_feed_hides_unless_asked(db):
+    db.add_all([Listing(title="ظاهر", score=70), Listing(title="مخفي", score=99, passes_filters=False)]); db.commit()
+    t = tools()["search_listings"]
+    assert [c["title"] for c in json.loads(t.invoke({}))["cards"]] == ["ظاهر"]
+    assert {c["title"] for c in json.loads(t.invoke({"include_filtered": True}))["cards"]} == {"ظاهر", "مخفي"}
