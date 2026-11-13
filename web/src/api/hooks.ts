@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from './client'
-import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, PreferenceChange, PreferencePatch, Preferences, ReactKind, SystemStatus } from './types'
+import type { FeedPage, FeedView, ListingDetail, MapPoint, Place, PreferenceChange, PreferencePatch, Preferences, ReactExtra, ReactKind, Suggestion, SystemStatus } from './types'
 
 export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => api<{ ok: boolean }>('/api/me'), retry: false })
 
@@ -66,7 +66,7 @@ export function useResumeAdapter() {
 export function useReact() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { id: number; kind: ReactKind; reason_code?: string; note?: string }) =>
+    mutationFn: (v: { id: number; kind: ReactKind } & ReactExtra) =>
       api<{ family_status: string }>(`/api/listings/${v.id}/react`, {
         method: 'POST', body: JSON.stringify({ kind: v.kind, reason_code: v.reason_code, note: v.note }),
       }),
@@ -88,10 +88,36 @@ export function useReact() {
 /** React to a listing; rejecting shows a toast with undo (better than a confirm dialog). */
 export function useReactWithUndo() {
   const react = useReact()
-  return (id: number, kind: ReactKind) => {
-    react.mutate({ id, kind })
+  return (id: number, kind: ReactKind, extra: ReactExtra = {}) => {
+    react.mutate({ id, kind, ...extra })
     if (kind === 'reject') {
       toast('تم الاستبعاد', { duration: 5000, action: { label: 'تراجع', onClick: () => react.mutate({ id, kind: 'unreject' }) } })
     }
   }
 }
+
+export const useSuggestions = () => useQuery({ queryKey: ['suggestions'], queryFn: () => api<Suggestion[]>('/api/suggestions') })
+
+function useSuggestionAction(action: 'apply' | 'dismiss') {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => api<unknown>(`/api/suggestions/${encodeURIComponent(code)}/${action}`, { method: 'POST' }),
+    onSuccess: () => {
+      if (action === 'apply') toast('تم تطبيق الاقتراح')
+      for (const k of ['suggestions', 'preferences', 'preference-changes', 'feed']) qc.invalidateQueries({ queryKey: [k] })
+      // apply rescores in the background; refetch shortly so the feed order catches up
+      if (action === 'apply') setTimeout(() => qc.invalidateQueries({ queryKey: ['feed'] }), 2000)
+    },
+    onError: () => toast.error('تعذّر تنفيذ الإجراء. حاولوا مرة أخرى.'),
+  })
+}
+export const useApplySuggestion = () => useSuggestionAction('apply')
+export const useDismissSuggestion = () => useSuggestionAction('dismiss')
+
+/** 2-4 listings side by side; the key carries the ids so a changed selection refetches. */
+export const useCompare = (ids: number[]) =>
+  useQuery({
+    queryKey: ['compare', ids],
+    queryFn: () => api<ListingDetail[]>(`/api/compare?ids=${ids.join(',')}`),
+    enabled: ids.length >= 2,
+  })

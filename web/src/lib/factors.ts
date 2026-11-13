@@ -29,6 +29,9 @@ export function fieldLabel(key: string): string {
   return FIELD_AR[key] ?? key
 }
 
+/** Reject reasons offered in the reason sheet, in display order (labels in REASON_AR). */
+export const REJECT_REASONS = ['too_old', 'narrow_street', 'bad_layout', 'overpriced', 'far', 'other'] as const
+
 export const REASON_AR: Record<string, string> = {
   price_above_max: 'السعر أعلى من الميزانية', bedrooms_below_min: 'الغرف أقل من المطلوب', type_excluded: 'نوع العقار غير مطلوب',
   district_excluded: 'خارج الأحياء المختارة', commute_school_too_long: 'بعيد عن المدرسة', commute_work_too_long: 'بعيد عن العمل',

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { CommuteChips } from './CommuteChips'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import { ScoreSeal } from './ScoreSeal'
+import { useRejectFlow } from './useRejectFlow'
 
 const yesNo = (v: boolean | null) => (v == null ? null : v ? 'نعم' : 'لا')
 
@@ -84,6 +85,7 @@ export function ListingDetailSkeleton() {
 export function ListingDetailView({ id, onClose }: { id: number; onClose?: () => void }) {
   const q = useListing(id)
   const react = useReactWithUndo()
+  const rejectFlow = useRejectFlow()
   if (q.isLoading) return <ListingDetailSkeleton />
   if (q.isError || !q.data) {
     return (
@@ -144,7 +146,7 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
         <Button className="flex-1" variant={saved ? 'default' : 'secondary'} onClick={() => react(l.id, saved ? 'unreject' : 'bookmark')}>
           {saved ? <><Check aria-hidden />محفوظ</> : <><Bookmark aria-hidden />حفظ</>}
         </Button>
-        <Button className="flex-1" variant="outline" onClick={() => react(l.id, 'reject')}><X aria-hidden />استبعاد</Button>
+        <Button className="flex-1" variant="outline" onClick={() => rejectFlow.ask(l.id, l.title)}><X aria-hidden />استبعاد</Button>
       </div>
       {phone && (
         <div className="flex gap-2">
@@ -179,6 +181,7 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
           </Button>
         ))}
       </div>
+      {rejectFlow.element}
     </div>
   )
 }

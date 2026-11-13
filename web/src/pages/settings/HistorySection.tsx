@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, ChevronLeft, History, TrendingUp, User, type LucideIcon } from 'lucide-react'
+import { Bot, ChevronDown, ChevronLeft, History, Sparkles, User, type LucideIcon } from 'lucide-react'
 import { usePreferenceChanges } from '../../api/hooks'
 import type { PreferenceChange } from '../../api/types'
 import { fieldLabel } from '../../lib/factors'
@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Skeleton } from '@/components/ui/skeleton'
 
 const SOURCE: Record<PreferenceChange['source'], { Icon: LucideIcon; label: string }> = {
-  user: { Icon: User, label: 'يدويًا' }, agent: { Icon: Bot, label: 'من المحادثة' }, learner: { Icon: TrendingUp, label: 'تعلّم تلقائي' },
+  user: { Icon: User, label: 'يدويًا' }, agent: { Icon: Bot, label: 'من المحادثة' }, learner: { Icon: Sparkles, label: 'تعلّم تلقائي' },
 }
 
 function formatValue(v: unknown): string {
@@ -56,6 +56,29 @@ function Entry({ c }: { c: PreferenceChange }) {
   )
 }
 
+function HistoryList({ changes }: { changes: PreferenceChange[] }) {
+  const learned = changes.filter((c) => c.source === 'learner')
+  const manual = changes.filter((c) => c.source !== 'learner')
+  const list = (items: PreferenceChange[]) => <ol className="space-y-4">{items.map((c, i) => <Entry key={`${c.at}-${i}`} c={c} />)}</ol>
+  if (!learned.length) return list(manual)
+  return (
+    <div className="space-y-6">
+      <section aria-labelledby="learned-title" className="space-y-3">
+        <h3 id="learned-title" className="flex items-center gap-2 text-base font-semibold">
+          <Sparkles className="size-4 text-primary" strokeWidth={1.75} aria-hidden />ما تعلّمه التطبيق
+        </h3>
+        {list(learned)}
+      </section>
+      {manual.length > 0 && (
+        <section aria-labelledby="manual-title" className="space-y-3">
+          <h3 id="manual-title" className="text-base font-semibold">تعديلاتكم وتعديلات المساعد</h3>
+          {list(manual)}
+        </section>
+      )}
+    </div>
+  )
+}
+
 export function HistorySection() {
   const q = usePreferenceChanges()
   return (
@@ -75,7 +98,7 @@ export function HistorySection() {
             <p>لا توجد تغييرات بعد. ستظهر هنا تعديلاتكم وتعديلات المساعد.</p>
           </div>
         ) : (
-          <ol className="space-y-4">{q.data.map((c, i) => <Entry key={`${c.at}-${i}`} c={c} />)}</ol>
+          <HistoryList changes={q.data} />
         )}
       </CardContent>
     </Card>

@@ -22,6 +22,7 @@ test('bookmark and reject from feed', async ({ page }) => {
   await expect(first.getByRole('button', { name: 'محفوظ' })).toBeVisible()
   const second = page.getByRole('article').filter({ hasText: 'فيلا 2' })
   await second.getByRole('button', { name: 'استبعاد' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'تخطي' }).click()
   await expect(page.getByRole('article').filter({ hasText: 'فيلا 2' })).toHaveCount(0)
 })
 
