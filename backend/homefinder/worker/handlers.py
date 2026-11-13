@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from homefinder import adapters_state
 from homefinder.schemas import SearchQuery
+from homefinder.worker.enrich.pipeline import enrich_listing
 from homefinder.worker.ingest import ingest_raw
 from homefinder.worker.sources.aqar_transport import AppVersionOutdated
 
@@ -57,6 +58,7 @@ def handle_scrape_search(deps: WorkerDeps, payload: dict) -> dict:
 
 HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "scrape_search": handle_scrape_search,
+    "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
 }
 
 
