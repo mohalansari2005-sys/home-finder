@@ -6,6 +6,52 @@ It collects listings from Aqar (and Haraj, in progress), scores each one 0–100
 
 The app is right-to-left Arabic throughout and is installable as a PWA. It has layouts for phone, iPad and desktop.
 
+## Why I built it
+
+My family is looking for a new home, and the search has been manual and exhausting. Every day someone scrolls through Aqar and Haraj, sees the same villa posted three times by three brokers, opens each listing to find out the size and age, pastes the location into Google Maps to guess the school run at 7 a.m., and sends screenshots to the family group. Then we lose track of which ones we liked, which ones we already rejected and why, and which sellers we've already called.
+
+Nobody needed another listings site. We needed someone doing the tedious part for us: reading everything, remembering what we care about, and bringing back only the homes worth a look, with the reasons. بيتنا is that assistant, built for one family and nobody else.
+
+## The problems it solves
+
+| The pain | What بيتنا does |
+|---|---|
+| Listings are scattered across sites and repeated by different brokers | Pulls from Aqar and Haraj on a schedule and merges duplicates into one listing |
+| Ads are messy: missing sizes, prices written in text, details buried in the description | Reads each ad, fills the gaps it can find in the text, and marks what's still unknown instead of guessing |
+| "Is it close?" depends on traffic, not distance | Computes rush-hour drive times to the school, workplace, university and airport for every listing |
+| Everyone weighs things differently, and the priorities are in people's heads | Turns the family's priorities into an explainable 0–100 score, and every score says why |
+| You re-filter the same way every day | Hard filters (budget, districts, type, rooms, area) hide what's out of bounds, and only new or changed listings get flagged |
+| You forget why you passed on a home | Rejects record a reason. The app learns from saves and rejects and suggests tweaks, such as "you keep rejecting old buildings, filter them out?" |
+| Prices change and ads disappear quietly | Tracks price history, shows price-drop badges, and marks listings that were taken down |
+| Visit days are chaotic | Groups liked homes by district into a visit trip with a driving order, time slots, WhatsApp links to each seller and a final check that the ads are still live |
+
+## Features
+
+**Finding and understanding homes**
+- A daily feed of homes to buy in Riyadh, ranked by fit, with new and saved tabs
+- One combined record per home, even when it's posted on several sites
+- A detail page with a photo gallery, specs (unknown values are clearly labelled), the original description, and links back to the source ads
+- A score seal on every listing, with "why this score?" listing what helped and what hurt
+- A map with price pins and the family's places marked
+- Rush-hour drive times to the school, workplace, university and King Khalid International Airport
+- Price-drop badges and a "listing removed" chip
+
+**Telling it what you want**
+- A chat assistant in Arabic. You can say "نبي فيلا في النرجس أو الياسمين بحدود مليونين، والمدرسة أهم من الدوام" (we want a villa in Al Narjis or Al Yasmin for about two million riyals, and the school matters more than work), and it updates the preferences and answers with matching homes.
+- A settings screen for places, hard filters and weights, with locks for the priorities you don't want it to change, plus a history of every change
+- Learning from saves and rejects, which only suggests changes the family approves
+
+**Deciding and visiting**
+- A side-by-side comparison with the best value in each row highlighted
+- Visit trips grouped by district, with a driving order, time slots, a contact status for each seller, a WhatsApp button and an "open in Google Maps" link
+- A pre-visit check that flags listings whose price changed or that were taken down since the trip was planned
+
+**Made for a family**
+- One shared family login, Arabic and right-to-left everywhere, and readable Western digits
+- Works on phone, iPad and desktop, and installs to the home screen
+- Keeps working while the scraping Mac sleeps; new listings arrive when it wakes
+- Monthly spending caps on OpenAI and Google, with live status in settings
+
 ## How it fits together
 
 ```
