@@ -1,0 +1,10 @@
+.env
+*.env
+.venv/
+__pycache__/
+node_modules/
+dist/
+.pytest_cache/
+data/photos/
+*.dump
+.DS_Store

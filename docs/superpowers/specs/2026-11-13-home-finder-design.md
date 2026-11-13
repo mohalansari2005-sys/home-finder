@@ -97,10 +97,16 @@ class SourceAdapter(Protocol):
 - Rate limit of about 1 request every 2–3 s per site with random jitter; responses are cached by URL and hash.
 - v1 sites: `aqar`, `haraj`. Adding a site = adding one module.
 
+**Aqar specifics** (based on an existing working notebook, verified 2026-11-13):
+- Endpoint: `POST https://sa.aqar.fm/graphql`, operation `findListings` (`Web.find(size, from, sort, where)`), 20 per page, filtered by `category`, `city_id`, `direction_id`, `district_id`, `published=1`. District lookup goes through `getAllCities` / `getAllDirections` / `getAllDistricts`.
+- Sale categories relevant to v1 (category ids as used in the notebook): Villa_Sell=3, Apartment_Sell=6, Home_Sell=9, Floor_Sell=22. Riyadh `city_id=21`. These are confirmed against `getAllCities` when the adapter runs, not hardcoded blindly.
+- Responses already contain **structured fields**: `price, area, age, beds, wc, livings, street_width, street_direction, maid, driver, lift, backyard, duplex, furnished, location{lat,lng}, imgs, content, district, direction, user{phone,name}, deed_number, ad_license_number, path, create_time, last_update`. Aqar listings therefore map straight to the canonical fields; LLM extraction only fills in fields that are null, from `content`.
+- **Cloudflare blocks plain HTTP clients** (a curl request got HTTP 403 "You have been blocked"). Transport order: (1) `curl_cffi` with Chrome browser impersonation; (2) Playwright: load `sa.aqar.fm` in a real browser, then call the GraphQL endpoint from the page with `fetch`. Cookies are never hardcoded.
+
 ### 3.2 Enricher (`worker/enrich/`)
 
 Turns a `RawListing` into a full `Listing`:
-1. **LLM extraction** from the Arabic title and description into typed fields (bedrooms, bathrooms, built-up area, land area, building age, street width, facing direction, number of streets, deed type, maid's/driver's room, yard, elevator, property type). Any field the text doesn't state stays `null` and is never guessed.
+1. **LLM extraction** (needed mainly for Haraj, and for null fields on Aqar) from the Arabic title and description into typed fields (bedrooms, bathrooms, built-up area, land area, building age, street width, facing direction, number of streets, deed type, maid's/driver's room, yard, elevator, property type). Any field the text doesn't state stays `null` and is never guessed.
 2. **Geocoding:** use the source's coordinates if present, otherwise geocode the district or address. Stores the accuracy (exact or district centroid).
 3. **Commute:** Google Routes driving time to the 4 fixed places, departing on a weekday at 7:30 am (school, work, university) and at a typical time (airport). Results are cached by (rounded coordinates, place) in `commute_cache`.
 4. **Photos:** download, convert to WebP (max 1600 px), store on the server, and compute a perceptual hash.
@@ -127,7 +133,7 @@ The agent replies in Arabic. Its tools:
 - `get_preferences`, `update_preferences(patch)`. Every change is shown to the family as a short confirmation.
 - `search_listings(filters, sort, limit)`, which searches the local database.
 - `get_listing(id)` and `compare_listings(ids)`.
-- `request_scrape(query)`, which queues an on-demand job. If the Mac has been offline for more than 10 minutes, it falls back to a single small API search run on the server (Aqar only, no browser, at most 1 page).
+- `request_scrape(query)`, which queues an on-demand job. If the Mac has been offline for more than 10 minutes, it falls back to a single small API search run on the server (Aqar only, `curl_cffi`, no browser, at most 1 page). If that is blocked too, the agent tells the family that results will arrive once the Mac is back online.
 - `suggest_visit_trip(district_group)`.
 
 Conversation state is persisted with a LangGraph Postgres checkpointer. Chat replies stream to the browser over SSE.
