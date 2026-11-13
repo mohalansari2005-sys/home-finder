@@ -107,4 +107,18 @@ def test_status_counts_and_last_scrape(db, family):
     db.add(AdapterHealth(source="aqar", status="ok", last_success_at=datetime(2026, 1, 1, tzinfo=UTC))); db.commit()
     s = family.get("/api/status").json()
     assert s["counts"] == {"active": 4, "new": 2, "bookmarked": 1, "rejected": 1, "passing": 2}
-    assert s["adapters"][0]["last_scrape_at"] == s["adapters"][0]["last_success_at"] != None  # noqa: E711
+    assert s["adapters"][0]["last_success_at"] and s["adapters"][0]["last_scrape_at"] is None  # no scrape job has finished
+
+
+def test_status_last_scrape_is_the_last_finished_scrape_job_not_the_last_success(db, family):
+    """M21: last_scrape_at used to repeat last_success_at."""
+    from datetime import datetime, UTC
+    from homefinder.models import AdapterHealth
+    t_ok, t_scrape = datetime(2026, 11, 1, 6, 0, tzinfo=UTC), datetime(2026, 11, 2, 6, 0, tzinfo=UTC)
+    db.add(AdapterHealth(source="aqar", status="ok", last_success_at=t_ok))
+    db.add(Job(type="scrape_search", payload={"source": "aqar"}, status="done", finished_at=t_scrape))
+    db.add(Job(type="scrape_search", payload={"source": "aqar"}, status="pending"))
+    db.add(Job(type="scrape_search", payload={"source": "haraj"}, status="done", finished_at=datetime(2026, 12, 1, tzinfo=UTC)))
+    db.commit()
+    a = family.get("/api/status").json()["adapters"][0]
+    assert a["last_success_at"] == t_ok.isoformat() and a["last_scrape_at"] == t_scrape.isoformat()

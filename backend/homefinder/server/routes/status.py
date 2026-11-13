@@ -43,6 +43,9 @@ def _disk() -> dict | None:
 def status(s: Session = Depends(get_db)):
     w = s.get(WorkerStatus, 1)
     counts = dict(s.execute(select(Job.status, func.count()).group_by(Job.status)).all())
+    src = Job.payload["source"].astext
+    last_scrape = dict(s.execute(select(src, func.max(Job.finished_at))
+                                 .where(Job.type == "scrape_search", Job.status == "done").group_by(src)).all())
     failed = s.scalars(select(Job).where(Job.status == "failed").order_by(Job.finished_at.desc().nulls_last()).limit(10))
     return {
         "worker": {"online": bool(w and w.last_seen and datetime.now(UTC) - w.last_seen < ONLINE_WITHIN),
@@ -50,7 +53,7 @@ def status(s: Session = Depends(get_db)):
                    "current_job_id": w.current_job_id if w else None},
         "jobs": {k: counts.get(k, 0) for k in ("pending", "claimed", "failed")},
         "adapters": [{"source": a.source, "status": a.status, "reason": a.reason, "last_success_at": _iso(a.last_success_at),
-                     "last_scrape_at": _iso(a.last_success_at)}
+                     "last_scrape_at": _iso(last_scrape.get(a.source))}
                      for a in s.scalars(select(AdapterHealth))],
         "counts": _listing_counts(s),
         "disk": _disk(),
