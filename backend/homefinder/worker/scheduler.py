@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from homefinder import adapters_state, jobs
 from homefinder.models import Job
 
-ENABLED_SOURCES: list[str] = ["aqar"]
+ENABLED_SOURCES: list[str] = ["aqar", "haraj"]
 
 
 def maybe_schedule(s: Session, interval_hours: float) -> int:

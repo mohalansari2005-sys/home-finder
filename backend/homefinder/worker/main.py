@@ -14,6 +14,8 @@ from homefinder.worker import scheduler
 from homefinder.worker.client import WorkerClient
 from homefinder.worker.handlers import HANDLERS, WorkerDeps, dispatch
 from homefinder.worker.sources.aqar import AqarAdapter, make_default_transport
+from homefinder.worker.sources.haraj import HarajAdapter
+from homefinder.worker.sources.haraj_transport import make_haraj_transport
 
 log = logging.getLogger("homefinder.worker")
 HEARTBEAT_EVERY = 60.0
@@ -58,7 +60,8 @@ def run_loop(deps, client, *, stop: Callable[[], bool], sleep=time.sleep, poll_i
 def build_deps(client: WorkerClient) -> WorkerDeps:
     http = httpx.Client(timeout=30, headers={"user-agent": "Mozilla/5.0 (Macintosh) HomeFinder/0.1"})
     return WorkerDeps(session_factory=session_scope,
-                      adapters={"aqar": lambda: AqarAdapter(make_default_transport())},
+                      adapters={"aqar": lambda: AqarAdapter(make_default_transport()),
+                                "haraj": lambda: HarajAdapter(make_haraj_transport())},
                       llm=make_llm(), google=make_google(http), photo_sink=client, http=http)
 
 
