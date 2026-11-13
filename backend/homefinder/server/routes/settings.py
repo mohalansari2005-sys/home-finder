@@ -89,7 +89,7 @@ def _explain(e: ValidationError) -> str:
 
 def apply_prefs_patch(s: Session, body: PrefsPatch, source: str, explanation: str) -> dict:
     """Shared by the HTTP route and the chat agent. Raises ValueError on invalid input."""
-    p = prefs.get_or_create(s)
+    p = prefs.get_or_create(s, lock=True)
     before = snapshot(p)
     try:
         hf = HardFilters(**{**p.hard_filters, **(body.hard_filters or {})}).model_dump()
