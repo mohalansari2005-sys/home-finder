@@ -37,7 +37,7 @@ class RawListing(BaseModel):
     source_id: str
     url: str
     fields: CanonicalFields
-    geo_precision: Literal["exact", "approximate"] | None = None
+    geo_precision: Literal["exact", "approximate", "district"] | None = None
     photo_urls: list[str] = Field(default_factory=list)
     seller_phone: str | None = None
     seller_name: str | None = None

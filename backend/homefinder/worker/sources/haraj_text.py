@@ -4,6 +4,7 @@ Haraj's API `price` is null on almost every real-estate post; the price is only 
 the cross-source dedupe (which needs a price on both sides) can never match a Haraj post with its Aqar twin.
 A wrong price is worse than none, so the parser only trusts a number that follows a price keyword and returns
 None whenever it is unsure."""
+import math
 import re
 
 from homefinder.textnorm import normalize_ar, to_western_digits
@@ -131,4 +132,39 @@ def parse_price_from_text(*texts: str | None) -> int | None:
                 price = _first_price_after(t, m.end())
                 if price is not None:
                     return price
+    return None
+
+
+# --- location ---
+
+SAUDI = (16, 33, 34, 56)  # lat min/max, lng min/max
+PRECISION_LEVELS = ["exact", "approximate", "district", "none"]
+MAX_DISAGREEMENT_M = 2_000
+_URL = re.compile(r"https?://\S*(?:google\.[a-z.]+/maps|maps\.google\.[a-z.]+|goo\.gl/maps|maps\.app\.goo\.gl)\S*", re.I)
+_COORD = r"(-?\d{1,3}\.\d+)"
+_COORD_PATTERNS = [
+    re.compile(rf"[?&](?:q|ll|query|center|destination)={_COORD}(?:,|%2C){_COORD}", re.I),
+    re.compile(rf"@{_COORD},{_COORD}"),
+    re.compile(rf"!3d{_COORD}!4d{_COORD}"),
+]
+
+
+def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lng2 - lng1) / 2) ** 2
+    return 2 * 6_371_000 * math.asin(math.sqrt(a))
+
+
+def lower_precision(p: str) -> str:
+    return PRECISION_LEVELS[min(PRECISION_LEVELS.index(p) + 1, len(PRECISION_LEVELS) - 1)]
+
+
+def parse_maps_link(body: str | None) -> tuple[float, float] | None:
+    """(lat, lng) from the first Google Maps link in the body that carries coordinates inside Saudi Arabia."""
+    for url in _URL.findall(body or ""):
+        for pat in _COORD_PATTERNS:
+            for m in pat.finditer(url):
+                lat, lng = float(m.group(1)), float(m.group(2))
+                if SAUDI[0] <= lat <= SAUDI[1] and SAUDI[2] <= lng <= SAUDI[3]:
+                    return lat, lng
     return None
