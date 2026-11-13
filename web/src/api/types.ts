@@ -48,6 +48,7 @@ export interface SystemStatus {
   counts: { active: number; new: number; bookmarked: number; rejected: number; passing: number }
   adapters: { source: string; status: string; reason: string | null; last_success_at: string | null; last_scrape_at: string | null }[]
   failed_jobs: { id: number; type: string; error: string | null; finished_at: string | null }[]
+  disk: { free_gb: number; total_gb: number } | null
 }
 export type FeedView = 'all' | 'new' | 'bookmarked'
 export type ReactKind = 'bookmark' | 'reject' | 'unreject'

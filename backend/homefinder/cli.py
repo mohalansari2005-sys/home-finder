@@ -7,8 +7,10 @@ from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
 
 from homefinder import jobs, prefs
+from homefinder.config import get_settings
 from homefinder.db import session_scope
 from homefinder.models import Place
+from homefinder.photos_prune import prune_photos
 from homefinder.rescore import rescore_all
 
 KKIA = ("مطار الملك خالد الدولي", 24.9576, 46.6988)
@@ -35,6 +37,8 @@ def main(argv=None) -> None:
     f = sub.add_parser("set-filters")
     f.add_argument("--json", required=True)
     sub.add_parser("enqueue-scrape")
+    pp = sub.add_parser("prune-photos")  # server cron: delete photos of long-gone listings
+    pp.add_argument("--days", type=int, default=30)
     sub.add_parser("rescore")  # recompute every listing's filters and score (run once after a scoring change)
     a = ap.parse_args(argv)
 
@@ -49,6 +53,9 @@ def main(argv=None) -> None:
         with session_scope() as s:
             pr = prefs.get_or_create(s)
             pr.hard_filters = {**pr.hard_filters, **json.loads(a.json)}
+    elif a.cmd == "prune-photos":
+        with session_scope() as s:
+            print(f"pruned photos of {prune_photos(s, get_settings().photos_dir, a.days)} listings")
     elif a.cmd == "rescore":
         with session_scope() as s:
             print(f"rescored {rescore_all(s)} listings")

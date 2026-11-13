@@ -5,9 +5,9 @@ DIR=/var/backups/homefinder
 STAMP=$(date +%F)
 docker compose -f deploy/docker-compose.yml --env-file .env exec -T db pg_dump -U hf homefinder | gzip > "$DIR/db-$STAMP.sql.gz"
 ls -1t "$DIR"/db-*.sql.gz | tail -n +15 | xargs -r rm --
+# Listing photos are not backed up: they are public downloads and can be fetched again (and they would fill the disk).
+rm -f "$DIR"/photos-*.tgz
 if [ "$(date +%u)" = "5" ]; then
-  docker run --rm -v homefinder_photos:/p -v "$DIR":/b alpine tar czf "/b/photos-$STAMP.tgz" -C /p .
-  ls -1t "$DIR"/photos-*.tgz | tail -n +5 | xargs -r rm --
   docker run --rm -v homefinder_visit_photos:/p -v "$DIR":/b alpine tar czf "/b/visit-photos-$STAMP.tgz" -C /p .
   ls -1t "$DIR"/visit-photos-*.tgz | tail -n +5 | xargs -r rm --
 fi

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatClock, formatTripDate, formatYears, pluralAr, PLACE_LABEL_AR, toDate } from './format'
+import { formatDecimal, formatArea, formatDate, formatRelative, formatMinutes, formatPrice, formatRooms, formatClock, formatTripDate, formatYears, pluralAr, PLACE_LABEL_AR, toDate } from './format'
 
 describe('format', () => {
   it('formats price with western digits and riyal suffix', () => {
@@ -104,5 +104,14 @@ describe('formatTripDate', () => {
   it('shows weekday and Gregorian date with Western digits', () => {
     expect(formatTripDate('2026-11-14')).toBe('السبت، 14 نوفمبر')
     expect(formatTripDate('nope')).toBe('')
+  })
+})
+
+describe('formatDecimal', () => {
+  it('uses fixed digits and Latin numerals', () => {
+    expect(formatDecimal(7.44)).toBe('7.4')
+    expect(formatDecimal(2, 1)).toBe('2.0')
+    expect(formatDecimal(-4.95, 1)).toBe('-5.0')
+    expect(formatDecimal(null)).toBe('—')
   })
 })

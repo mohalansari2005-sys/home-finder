@@ -128,6 +128,27 @@ def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
     return {"removed": True}
 
 
+def handle_fetch_missing_photos(deps: WorkerDeps, payload: dict) -> dict:
+    """Catch-up for listings that became visible after their first enrichment (at most 50 per run)."""
+    from homefinder.worker.enrich.photos import fetch_photos
+    from homefinder.worker.scheduler import missing_photo_ids
+
+    if deps.photo_sink is None or deps.http is None:
+        return {"skipped": "no sink"}
+    with deps.session_factory() as s:
+        ids = missing_photo_ids(s)
+    done = photos = 0
+    for lid in ids:
+        with deps.session_factory() as s:
+            urls = next((u for u in s.scalars(select(ListingSource.photo_urls).where(
+                ListingSource.listing_id == lid).order_by(ListingSource.id)) if u), [])
+        photos += fetch_photos(deps.http, deps.photo_sink, lid, urls)
+        with deps.session_factory() as s:
+            s.get(Listing, lid).photos_fetched = True
+        done += 1
+    return {"listings": done, "photos": photos}
+
+
 def handle_learn(deps: WorkerDeps, payload: dict) -> dict:
     from homefinder.learner import run_learn  # sklearn is imported only when the job runs
 
@@ -148,6 +169,7 @@ HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "learn": handle_learn,
     "precheck_trip": handle_precheck_trip,
     "recompute_commutes": handle_recompute_commutes,
+    "fetch_missing_photos": handle_fetch_missing_photos,
     "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
 }
 

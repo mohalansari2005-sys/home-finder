@@ -44,7 +44,10 @@ def enrich_listing(deps, listing_id: int) -> dict:
                 requeue = True
         apply_score(l, prefs.get_or_create(s))
         l.enriched_at = func.now()
-        need_photos = not l.photos_fetched and deps.photo_sink is not None and deps.http is not None
+        # Photos cost disk: only for listings the family can actually see. Others get them from the daily
+        # fetch_missing_photos catch-up if they become visible later.
+        visible = l.family_status != "rejected" and (l.passes_filters or l.family_status in ("bookmarked", "visited"))
+        need_photos = not l.photos_fetched and visible and deps.photo_sink is not None and deps.http is not None
         urls = next((src.photo_urls for src in s.scalars(select(ListingSource).where(
             ListingSource.listing_id == listing_id)) if src.photo_urls), [])
         commutes = len(l.commutes or {})

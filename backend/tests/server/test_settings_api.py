@@ -35,6 +35,22 @@ def test_status_shape(family):
     assert s["worker"]["online"] is False and s["jobs"] == {"pending": 0, "claimed": 0, "failed": 0}
 
 
+def test_status_reports_free_disk_space_of_the_photos_volume(family, monkeypatch):
+    import shutil
+    from collections import namedtuple
+    U = namedtuple("U", "total used free")
+    seen = []
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: seen.append(str(p)) or U(40 * 2**30, 33 * 2**30, 7 * 2**30))
+    d = family.get("/api/status").json()["disk"]
+    assert d == {"free_gb": 7.0, "total_gb": 40.0} and seen
+
+
+def test_status_disk_is_null_when_the_volume_cannot_be_read(family, monkeypatch):
+    import shutil
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: (_ for _ in ()).throw(OSError("gone")))
+    assert family.get("/api/status").json()["disk"] is None
+
+
 def test_get_preferences_returns_effective_defaults(family):
     p = family.get("/api/preferences").json()
     assert p["weights"]["commute_work"] == 1.0 and p["targets"]["commute_bad_min"] == 40

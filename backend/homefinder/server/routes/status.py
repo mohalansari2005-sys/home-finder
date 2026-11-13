@@ -1,9 +1,12 @@
+import shutil
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from homefinder.config import get_settings
 from homefinder.models import AdapterHealth, Job, Listing, WorkerStatus
 from homefinder.server.deps import get_db, require_family
 
@@ -24,6 +27,18 @@ def _listing_counts(s: Session) -> dict:
             "passing": n(Listing.passes_filters.is_(True), Listing.family_status != "rejected")}
 
 
+def _disk() -> dict | None:
+    """Free space on the volume that holds the photos (and the nightly dumps): the first thing to fill up."""
+    p = Path(get_settings().photos_dir)
+    while not p.exists() and p != p.parent:
+        p = p.parent
+    try:
+        u = shutil.disk_usage(p)
+    except OSError:
+        return None
+    return {"free_gb": round(u.free / 2**30, 1), "total_gb": round(u.total / 2**30, 1)}
+
+
 @router.get("/status")
 def status(s: Session = Depends(get_db)):
     w = s.get(WorkerStatus, 1)
@@ -38,5 +53,6 @@ def status(s: Session = Depends(get_db)):
                      "last_scrape_at": _iso(a.last_success_at)}
                      for a in s.scalars(select(AdapterHealth))],
         "counts": _listing_counts(s),
+        "disk": _disk(),
         "failed_jobs": [{"id": j.id, "type": j.type, "error": j.error, "finished_at": _iso(j.finished_at)} for j in failed],
     }

@@ -186,7 +186,7 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
     if (url.pathname === '/api/status') return json({ worker: { online: true, last_seen: null, hostname: 'mac', current_job_id: null }, jobs: { pending: 0, claimed: 0, failed: 0 },
       counts: { active: 40, new: 6, bookmarked: 3, rejected: 9, passing: 25 },
       adapters: [{ source: 'aqar', status: adapterPaused ? 'paused' : 'ok', reason: adapterPaused ? 'app-version outdated' : null, last_success_at: null, last_scrape_at: new Date(Date.now() - 2 * 3600_000).toISOString() }],
-      failed_jobs: [] })
+      failed_jobs: [], disk: { free_gb: 22.4, total_gb: 40 } })
     return json({}, 404)
   })
   return state
