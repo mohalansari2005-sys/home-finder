@@ -1,4 +1,6 @@
-import { Briefcase, GraduationCap, Plane, School, type LucideIcon } from 'lucide-react'
+import { Briefcase, GraduationCap, House, Plane, School, type LucideIcon } from 'lucide-react'
+
+import type { PlaceKind } from '../api/types'
 
 // All number/date formatting goes through here (see docs/arabic-ui-rules.md).
 // Never call Intl with bare 'ar' / 'ar-SA': digits, percent sign and calendar vary by runtime.
@@ -22,6 +24,22 @@ export function toDate(s: string): Date | null {
 export const formatDate = (d: Date) => df.format(d)
 const dtf = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh' })
 export const formatDateTime = (d: Date) => dtf.format(d)
+
+const tdf = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })
+/** "YYYY-MM-DD" -> "السبت، 14 نوفمبر". Invalid input -> ''. */
+export function formatTripDate(s: string): string {
+  const d = toDate(s)
+  return d ? tdf.format(d) : ''
+}
+
+/** "16:10" -> { time: '4:10', period: 'م' }. Never show the raw 24-hour string; wrap `time` in <bdi>. */
+export function formatClock(hhmm: string | null | undefined): { time: string; period: 'ص' | 'م' } | null {
+  const m = hhmm ? /^(\d{1,2}):(\d{2})/.exec(hhmm) : null
+  if (!m) return null
+  const h = Number(m[1])
+  if (h > 23 || Number(m[2]) > 59) return null
+  return { time: `${h % 12 || 12}:${m[2]}`, period: h >= 12 ? 'م' : 'ص' }
+}
 
 export interface PluralForms { zero: string; one: string; two: string; few: string; many: string; other: string }
 
@@ -54,6 +72,14 @@ export const COMMUTE_ICONS: { kind: 'school' | 'work' | 'university' | 'airport'
   { kind: 'work', Icon: Briefcase, label: 'العمل' },
   { kind: 'university', Icon: GraduationCap, label: 'الجامعة' },
   { kind: 'airport', Icon: Plane, label: 'المطار' },
+]
+export const PLACE_LABEL_AR: Record<PlaceKind, string> = {
+  home: 'المنزل الحالي', school: 'المدرسة', work: 'العمل', university: 'الجامعة', airport: 'المطار',
+}
+/** Saved places in display order; the current home leads (it is the trip starting point, never a commute target). */
+export const PLACE_ICONS: { kind: PlaceKind; Icon: LucideIcon; label: string }[] = [
+  { kind: 'home', Icon: House, label: PLACE_LABEL_AR.home },
+  ...COMMUTE_ICONS,
 ]
 export const FACING_AR: Record<string, string> = {
   north: 'شمال', south: 'جنوب', east: 'شرق', west: 'غرب',

@@ -22,7 +22,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://hf:${POSTGRES_PASSWORD}@db:5432/homefinder
       PHOTOS_DIR: /data/photos
-    volumes: [photos:/data/photos]
+      VISIT_PHOTOS_DIR: /data/visit_photos  # family-private: served only by the authenticated API, never by nginx
+    volumes: [photos:/data/photos, visit_photos:/data/visit_photos]
     depends_on: { db: { condition: service_healthy } }
     mem_limit: 640m
   nginx:
@@ -40,3 +41,4 @@ services:
 volumes:
   pgdata:
   photos:
+  visit_photos:

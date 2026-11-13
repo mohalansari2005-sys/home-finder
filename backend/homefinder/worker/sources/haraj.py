@@ -8,7 +8,7 @@ from homefinder.sanity import PRICE, clean_int
 from homefinder.schemas import CanonicalFields, HealthReport, PropertyType, RawListing, SearchQuery
 from homefinder.textnorm import normalize_ar, normalize_district
 from homefinder.worker.sources.base import Pacer
-from homefinder.worker.sources.haraj_text import (MAX_DISAGREEMENT_M, haversine_m, lower_precision, parse_areas_from_text,
+from homefinder.worker.sources.haraj_text import (MAX_DISAGREEMENT_M, haversine_m, lower_precision, parse_areas_from_text, parse_phone_from_text,
                                                    parse_maps_link, parse_price_from_text)
 from homefinder.worker.sources.haraj_transport import SITE, HarajTransport
 
@@ -114,7 +114,8 @@ def parse_post(d: dict, field_map_override: bool = False) -> RawListing | None:
         source="haraj", source_id=str(pid), url=f"{SITE}/{pid}", fields=fields,
         geo_precision=precision,
         photo_urls=[u for u in (imgs if isinstance(imgs, list) else []) if isinstance(u, str) and u.startswith("http")],
-        seller_phone=None, seller_name=None,  # never requested from the API; see docs/sources/haraj.md
+        seller_phone=parse_phone_from_text(body, html.unescape(title), exclude={str(pid)}),  # API has none; body only
+        seller_name=None,  # see docs/sources/haraj.md
         listed_at=datetime.fromtimestamp(posted, UTC) if isinstance(posted, (int, float)) and not isinstance(posted, bool) else None,
         raw=d)
 

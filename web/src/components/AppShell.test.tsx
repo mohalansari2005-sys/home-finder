@@ -22,6 +22,8 @@ describe('AppShell', () => {
     shell()
     expect(screen.getByTestId('bottom-tabs')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'المساعد' })).toHaveAttribute('href', '/assistant')
+    expect(screen.getAllByRole('link')).toHaveLength(5)
+    expect(screen.getByRole('link', { name: 'الزيارات' })).toHaveAttribute('href', '/visits')
     expect(screen.queryByTestId('side-nav')).toBeNull()
     expect(screen.queryByRole('button', { name: 'اسأل المساعد' })).toBeNull()
     expect(screen.queryByTestId('chat-dock')).toBeNull()

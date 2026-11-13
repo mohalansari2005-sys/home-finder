@@ -12,7 +12,7 @@ def tools():
 def test_tool_names():
     assert set(tools()) == {"get_preferences", "update_preferences", "search_listings", "get_listing",
                             "compare_listings", "request_scrape", "get_filter_suggestions",
-                            "apply_filter_suggestion"}
+                            "apply_filter_suggestion", "suggest_visit_trip", "create_visit_trip"}
 
 
 def test_get_preferences_tool(db):
@@ -112,3 +112,44 @@ def test_filter_suggestion_tools(db):
     db.expire_all()
     assert db.get(Preferences, 1).hard_filters["building_age_max"] == 21
     assert db.query(Job).filter_by(type="rescore_all").count() == 1
+
+
+def _visit_seed(db):
+    from geoalchemy2.elements import WKTElement
+    from homefinder.models import Place
+    db.add(Place(kind="home", name="البيت", lat=24.7, lng=46.6, geom=WKTElement("POINT(46.6 24.7)", srid=4326)))
+    ids = []
+    for i, (d, sc) in enumerate([("النرجس", 80), ("النرجس", 60), ("الشفا", 90)]):
+        la = 24.84 if d == "النرجس" else 24.55
+        l = Listing(title=f"ف{i}", district=d, lat=la + i / 1000, lng=46.65, family_status="bookmarked", score=sc)
+        db.add(l); db.flush(); ids.append(l.id)
+    db.commit()
+    return ids
+
+
+def test_visit_tools(db, monkeypatch):
+    from homefinder.server.routes import visits as visits_route
+    monkeypatch.setattr(visits_route, "get_google", lambda: None)
+    ids = _visit_seed(db)
+    out = json.loads(tools()["suggest_visit_trip"].invoke({}))
+    assert len(out["groups"]) >= 1 and len(out["groups"]) <= 3
+    g = out["groups"][0]
+    assert set(g) >= {"districts", "count", "avg_score", "listing_ids", "cards"} and len(g["cards"]) <= 3
+    assert g["districts"] == ["النرجس"] and g["count"] == 2
+    made = json.loads(tools()["create_visit_trip"].invoke({"listing_ids": g["listing_ids"], "date": "2026-12-05",
+                                                           "start_time": "16:00"}))
+    assert made["ok"] and made["url"] == f"/visits/{made['trip_id']}" and len(made["stops"]) == 2
+    assert made["date"] == "2026-12-05" and made["start_time"] == "16:00" and "no_route" in made["warnings"]
+    assert db.query(Job).filter_by(type="precheck_trip").count() == 1  # same code path as POST /api/visits/trips
+
+
+def test_create_visit_trip_tool_errors_are_reported_not_raised(db):
+    ids = _visit_seed(db)
+    t = tools()["create_visit_trip"]
+    assert json.loads(t.invoke({"listing_ids": ids[:1], "date": "غداً", "start_time": "16:00"}))["ok"] is False
+    assert json.loads(t.invoke({"listing_ids": ids[:1], "date": "2026-12-05", "start_time": "25:00"}))["ok"] is False
+    bad = json.loads(t.invoke({"listing_ids": ids[:1], "date": "2026-12-05", "start_time": "16:00", "origin_kind": "work"}))
+    assert bad["ok"] is False and "العمل" in bad["error"]
+    assert json.loads(t.invoke({"listing_ids": [], "date": "2026-12-05", "start_time": "16:00"}))["ok"] is False
+    assert json.loads(t.invoke({"listing_ids": ids[:1], "date": "2026-12-05", "start_time": "16:00",
+                                "minutes_per_visit": 5}))["ok"] is False

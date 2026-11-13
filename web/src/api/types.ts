@@ -25,7 +25,8 @@ export interface MapPoint {
   id: number; lat: number; lng: number; price: number | null; score: number | null; family_status: FamilyStatus
   title: string | null; district: string | null; photo_url: string | null
 }
-export interface Place { kind: CommuteKind; name: string; lat: number; lng: number }
+export type PlaceKind = CommuteKind | 'home'
+export interface Place { kind: PlaceKind; name: string; lat: number; lng: number }
 export interface HardFilters {
   city?: string; property_types?: string[]; districts?: string[]; price_max?: number | null; min_bedrooms?: number | null
   max_commute?: Partial<Record<CommuteKind, number>>; building_age_max?: number | null; street_width_min?: number | null
@@ -52,3 +53,35 @@ export type FeedView = 'all' | 'new' | 'bookmarked'
 export type ReactKind = 'bookmark' | 'reject' | 'unreject'
 export interface Suggestion { code: string; reason: string; count: number; patch: { hard_filters: Record<string, unknown> }; text: string }
 export interface ReactExtra { reason_code?: string | null; note?: string | null }
+
+// ---- visits (M5) ----
+export type ContactStatus = 'not_contacted' | 'contacted' | 'confirmed' | 'visited' | 'cancelled'
+export type TripStatus = 'planned' | 'done' | 'cancelled'
+export type TripOrigin = 'home' | 'school' | 'work' | 'university'
+export interface VisitGroup {
+  key: string; districts: string[]; listing_ids: number[]; count: number; avg_score: number | null
+  centroid: [number, number]; listings: ListingCard[]
+}
+export interface VisitGroups { groups: VisitGroup[]; no_location: ListingCard[] }
+export interface TripStop {
+  id: number; position: number; listing: ListingCard
+  eta_local: string | null; etd_local: string | null; drive_min: number | null
+  contact_status: ContactStatus; rating: number | null; notes: string | null
+  /** subset of "removed" | "price_changed"; unknown values are ignored */
+  flags: string[]; old_price?: number | null
+  whatsapp_url: string | null; phone: string | null; photos: string[]
+  /** the listing's source-site URL when the server provides it (not in the original contract) */
+  source_url?: string | null
+}
+export interface Trip {
+  id: number; title: string; date: string; start_time: string; origin_kind: TripOrigin; minutes_per_visit: number
+  status: TripStatus
+  /** "no_route" | "skipped_no_location" | "precheck_pending"; unknown codes are ignored */
+  warnings: string[]
+  skipped_no_location?: number
+  total_drive_min: number | null; maps_url: string; stops: TripStop[]
+}
+export interface TripCreate {
+  listing_ids: number[]; date: string; start_time: string; origin_kind: TripOrigin; minutes_per_visit: number; title?: string
+}
+export interface StopPatch { contact_status?: ContactStatus; rating?: number; notes?: string }

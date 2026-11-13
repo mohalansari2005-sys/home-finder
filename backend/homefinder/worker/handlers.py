@@ -133,11 +133,18 @@ def handle_learn(deps: WorkerDeps, payload: dict) -> dict:
         return run_learn(s)
 
 
+def handle_precheck_trip(deps: WorkerDeps, payload: dict) -> dict:
+    from homefinder.worker.precheck import run_precheck  # precheck builds on handle_refresh_listing above
+
+    return run_precheck(deps, payload["trip_id"])
+
+
 HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "scrape_search": handle_scrape_search,
     "refresh_listing": handle_refresh_listing,
     "rescore_all": handle_rescore_all,
     "learn": handle_learn,
+    "precheck_trip": handle_precheck_trip,
     "recompute_commutes": handle_recompute_commutes,
     "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
 }
