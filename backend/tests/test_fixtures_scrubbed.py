@@ -34,3 +34,17 @@ def test_no_long_digit_runs_in_free_text():
             if k in ("content", "description", "title") and isinstance(v, str):
                 for m in long_run.findall(v):
                     assert m == "0500000000", f"digit run {m} in {k} of {p}"
+
+
+def test_haraj_fixtures_have_no_identity_or_precise_location():
+    precise = re.compile(r"\d{1,3}\.\d{4,},\s*\d{1,3}\.\d{4,}")
+    for p in (FIXTURES / "haraj").glob("*.json"):
+        text = p.read_text("utf-8")
+        assert not precise.search(text), f"precise coordinates in {p}"
+        for parent, k, v in _walk(json.loads(text)):
+            if k == "authorUsername":
+                assert v in (None, "مالك تجريبي"), f"author name in {p}"
+            if k == "geoHash":
+                assert len(v) <= 6, f"precise geohash in {p}"
+        assert not re.search(r"(رقم المخطط|رقم القطعة)\s*:\s*[^\s-]", text), f"plot number in {p}"
+        assert "الحمود" not in text and "رقم الموظف" not in text
