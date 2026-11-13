@@ -28,5 +28,16 @@ def test_fetch_photos_skips_broken_and_caps_at_10():
         return httpx.Response(200, content=jpeg(800, 600), headers={"content-type": "image/jpeg"})
     sink = Sink()
     urls = ["https://i/bad.jpg"] + [f"https://i/{i}.jpg" for i in range(15)]
-    n = fetch_photos(httpx.Client(transport=httpx.MockTransport(h)), sink, 9, urls)
+    n = fetch_photos(httpx.Client(transport=httpx.MockTransport(h)), sink, 9, urls, sleep=lambda s: None)
     assert n == 9 and [g[1] for g in sink.got] == list(range(9))
+
+
+def test_fetch_photos_paces_requests_to_the_image_host():
+    calls, slept = [], []
+    def h(req):
+        calls.append(len(slept))
+        return httpx.Response(200, content=jpeg(400, 300), headers={"content-type": "image/jpeg"})
+    urls = [f"https://i/{i}.jpg" for i in range(3)]
+    fetch_photos(httpx.Client(transport=httpx.MockTransport(h)), Sink(), 1, urls, sleep=slept.append)
+    assert calls == [0, 1, 2]  # a pause before every request except the first
+    assert slept and all(s >= 0.5 for s in slept)

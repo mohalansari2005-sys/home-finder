@@ -1,4 +1,6 @@
 import logging
+import time
+from collections.abc import Callable
 from io import BytesIO
 from typing import Protocol
 
@@ -7,6 +9,7 @@ import httpx
 log = logging.getLogger(__name__)
 MAX_PHOTOS = 10
 MAX_SIDE = 1600
+PHOTO_DELAY_S = 0.5  # be polite to the listing sites' image hosts
 
 
 class PhotoSink(Protocol):
@@ -23,9 +26,12 @@ def process_image(data: bytes) -> tuple[bytes, str]:
     return out.getvalue(), str(imagehash.phash(im))
 
 
-def fetch_photos(http: httpx.Client, sink: PhotoSink, listing_id: int, urls: list[str]) -> int:
+def fetch_photos(http: httpx.Client, sink: PhotoSink, listing_id: int, urls: list[str],
+                 sleep: Callable[[float], None] = time.sleep) -> int:
     pos = 0
-    for url in urls[:MAX_PHOTOS]:
+    for i, url in enumerate(urls[:MAX_PHOTOS]):
+        if i:
+            sleep(PHOTO_DELAY_S)
         try:
             r = http.get(url, timeout=30, follow_redirects=True)
             r.raise_for_status()
