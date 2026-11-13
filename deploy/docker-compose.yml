@@ -1,0 +1,42 @@
+name: homefinder
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: homefinder
+    command: postgres -c shared_buffers=128MB -c work_mem=4MB -c maintenance_work_mem=64MB -c max_connections=30 -c effective_cache_size=384MB
+    volumes: [pgdata:/var/lib/postgresql/data]
+    ports: ["${TAILSCALE_IP:?set in .env}:5432:5432"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hf -d homefinder"]
+      interval: 10s
+      retries: 10
+  api:
+    build: { context: .., dockerfile: deploy/api.Dockerfile }
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://hf:${POSTGRES_PASSWORD}@db:5432/homefinder
+      PHOTOS_DIR: /data/photos
+    volumes: [photos:/data/photos]
+    depends_on: { db: { condition: service_healthy } }
+    mem_limit: 640m
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: { DOMAIN: "${DOMAIN:?set in .env}" }
+    volumes:
+      - ../web/dist:/usr/share/nginx/html:ro
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - photos:/data/photos:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on: [api]
+    mem_limit: 64m
+volumes:
+  pgdata:
+  photos:
