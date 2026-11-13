@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from homefinder.config import get_settings
-from homefinder.integrations.google import make_google
+from homefinder.integrations.tomtom import make_tomtom
 from homefinder.models import Listing, Reaction, VisitPhoto, VisitStop, VisitTrip
 from homefinder.server.deps import get_db, require_family
 from homefinder.server.routes.listings import enqueue_learn_if_due
@@ -49,9 +49,9 @@ def _http() -> httpx.Client:
     return httpx.Client(timeout=30)
 
 
-def get_google():
-    """The server's Google client (None without a key). Created lazily; tests replace this function."""
-    return make_google(_http())
+def get_maps():
+    """The server's TomTom client (None without a key). Created lazily; tests replace this function."""
+    return make_tomtom(_http())
 
 
 def _trip(s: Session, trip_id: int) -> VisitTrip:
@@ -63,7 +63,7 @@ def _trip(s: Session, trip_id: int) -> VisitTrip:
 
 @router.get("/visits/groups")
 def groups(s: Session = Depends(get_db)):
-    gs, no_coords = group_bookmarks(s, get_google())
+    gs, no_coords = group_bookmarks(s, get_maps())
     by_id = {c["id"]: c for c in listing_cards(
         s, list(s.scalars(select(Listing).where(Listing.id.in_([i for g in gs for i in g.listing_ids] + no_coords)))))}
     return {"groups": [{"key": g.key, "districts": g.districts, "listing_ids": g.listing_ids, "count": g.count,
@@ -84,7 +84,7 @@ class TripIn(BaseModel):
 @router.post("/visits/trips")
 def create_trip(body: TripIn, s: Session = Depends(get_db)):
     try:
-        trip = create_trip_from_request(s, get_google(), listing_ids=body.listing_ids, d=body.date,
+        trip = create_trip_from_request(s, get_maps(), listing_ids=body.listing_ids, d=body.date,
                                         t=body.start_time.replace(second=0, microsecond=0, tzinfo=None),
                                         origin_kind=body.origin_kind, minutes_per_visit=body.minutes_per_visit,
                                         title=body.title)
@@ -122,7 +122,7 @@ def patch_trip(trip_id: int, body: TripPatch, s: Session = Depends(get_db)):
 @router.post("/visits/trips/{trip_id}/replan")
 def replan_trip(trip_id: int, s: Session = Depends(get_db)):
     t = _trip(s, trip_id)
-    replan(s, get_google(), t)
+    replan(s, get_maps(), t)
     return trip_out(s, t)
 
 
@@ -164,7 +164,7 @@ def patch_stop(stop_id: int, body: StopPatch, s: Session = Depends(get_db)):
         enqueue_learn_if_due(s)
     s.flush()
     if needs_replan:
-        replan(s, get_google(), st.trip)
+        replan(s, get_maps(), st.trip)
     return trip_out(s, st.trip)
 
 

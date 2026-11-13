@@ -9,7 +9,7 @@ import httpx
 from homefinder import __version__
 from homefinder.config import get_settings
 from homefinder.db import session_scope
-from homefinder.integrations.google import ENRICH_RESERVE, make_google
+from homefinder.integrations.tomtom import ENRICH_RESERVE, make_tomtom
 from homefinder.integrations.llm import make_llm
 from homefinder.worker import scheduler
 from homefinder.worker.client import WorkerClient
@@ -90,7 +90,7 @@ def build_deps(client: WorkerClient) -> WorkerDeps:
     aqar, haraj = AqarAdapter(make_default_transport()), HarajAdapter(make_haraj_transport())
     return WorkerDeps(session_factory=session_scope,
                       adapters={"aqar": lambda: aqar, "haraj": lambda: haraj},
-                      llm=make_llm(), google=make_google(http, reserve=ENRICH_RESERVE), photo_sink=client, http=http)
+                      llm=make_llm(), maps=make_tomtom(http, reserve=ENRICH_RESERVE), photo_sink=client, http=http)
 
 
 def main() -> None:

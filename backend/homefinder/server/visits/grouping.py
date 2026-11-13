@@ -13,7 +13,7 @@ from homefinder.textnorm import normalize_district
 
 log = logging.getLogger(__name__)
 RIYADH = ZoneInfo("Asia/Riyadh")
-CANDIDATE_KM = 6.0  # only district pairs this close are worth a Google call
+CANDIDATE_KM = 6.0  # only district pairs this close are worth a TomTom call
 MERGE_MINUTES = 10
 FALLBACK_KM = 3.0  # without drive times, merge on distance alone
 CACHE_TTL = timedelta(days=90)
@@ -53,9 +53,9 @@ def _centroid(rows: list[Listing]) -> tuple[float, float]:
     return sum(l.lat for l in rows) / len(rows), sum(l.lng for l in rows) / len(rows)
 
 
-def _drive_minutes(s: Session, google, pairs: list[tuple[str, str]], cents: dict[str, tuple[float, float]]) -> dict:
-    """{(a, b): minutes|None} for pairs (a < b) from the cache or one Google call per origin district.
-    A Google failure leaves the pair out of the result (callers fall back to distance); it is never cached."""
+def _drive_minutes(s: Session, maps, pairs: list[tuple[str, str]], cents: dict[str, tuple[float, float]]) -> dict:
+    """{(a, b): minutes|None} for pairs (a < b) from the cache or one TomTom call per origin district.
+    A TomTom failure leaves the pair out of the result (callers fall back to distance); it is never cached."""
     out: dict[tuple[str, str], int | None] = {}
     fresh_after = datetime.now(UTC) - CACHE_TTL
     todo: dict[str, list[str]] = {}
@@ -65,12 +65,12 @@ def _drive_minutes(s: Session, google, pairs: list[tuple[str, str]], cents: dict
             out[(a, b)] = row.minutes
         else:
             todo.setdefault(a, []).append(b)
-    if google is None:
+    if maps is None:
         return out
     dep = next_saturday_16()
     for a, bs in todo.items():
         try:
-            mins = google.drive_minutes(cents[a], [cents[b] for b in bs], dep)
+            mins = maps.drive_minutes(cents[a], [cents[b] for b in bs], dep)
         except Exception as e:  # noqa: BLE001 — quota or outage: group by distance instead
             log.warning("district drive times unavailable: %s", e)
             continue
@@ -81,7 +81,7 @@ def _drive_minutes(s: Session, google, pairs: list[tuple[str, str]], cents: dict
     return out
 
 
-def group_bookmarks(s: Session, google) -> tuple[list[Group], list[int]]:
+def group_bookmarks(s: Session, maps) -> tuple[list[Group], list[int]]:
     rows = list(s.scalars(select(Listing).where(
         Listing.family_status == "bookmarked", Listing.merged_into_id.is_(None), Listing.status == "active")
         .order_by(Listing.id)))
@@ -103,7 +103,7 @@ def group_bookmarks(s: Session, google) -> tuple[list[Group], list[int]]:
     keys = sorted(by_district)
     close = [(a, b) for i, a in enumerate(keys) for b in keys[i + 1:]
              if haversine_km(cents[a], cents[b]) <= CANDIDATE_KM]
-    minutes = _drive_minutes(s, google, close, cents) if close else {}
+    minutes = _drive_minutes(s, maps, close, cents) if close else {}
 
     parent = {k: k for k in keys}
 

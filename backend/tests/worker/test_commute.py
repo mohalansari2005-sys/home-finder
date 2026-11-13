@@ -21,7 +21,7 @@ def test_origin_key_rounds():
     assert origin_key(24.81234, 46.63449) == "24.812,46.634"
 
 
-class FakeGoogle:
+class FakeMaps:
     def __init__(self): self.calls = []
     def drive_minutes(self, origin, dests, departure):
         self.calls.append((origin, dests, departure))
@@ -36,7 +36,7 @@ def test_compute_commutes_groups_by_departure_and_caches(db):
     for k, la in [("school", 24.7), ("work", 24.71), ("university", 24.72), ("airport", 24.95)]:
         _place(db, k, la, 46.7)
     l = Listing(lat=24.8, lng=46.6); db.add(l); db.commit()
-    g = FakeGoogle()
+    g = FakeMaps()
     now = datetime(2026, 11, 12, 7, 0, tzinfo=UTC)
     out = compute_commutes(db, g, l, now=now)
     assert out == {"school": 10, "work": 11, "university": 12, "airport": 10}
@@ -50,7 +50,7 @@ def test_home_place_gets_no_commute(db):
     _place(db, "work", 24.71, 46.7)
     _place(db, "home", 24.72, 46.71)
     l = Listing(lat=24.8, lng=46.6); db.add(l); db.commit()
-    g = FakeGoogle()
+    g = FakeMaps()
     out = compute_commutes(db, g, l, now=datetime(2026, 11, 12, 7, 0, tzinfo=UTC))
     assert out == {"work": 10} and [len(c[1]) for c in g.calls] == [1]
     assert db.query(CommuteCache).count() == 1

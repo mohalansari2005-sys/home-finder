@@ -51,9 +51,13 @@ test('plan a trip, mark visited, rate, notes and photo', async ({ page }, info) 
   await expect(first.getByText('حجم الصورة يتجاوز 8 ميغابايت')).toBeVisible()
   expect(api.photoUploads).toBe(1)
 
-  // route map on wide screens (no key in e2e -> the fallback), none on phone / tablet portrait
-  if (info.project.name === 'desktop') await expect(page.getByLabel('خريطة المسار').getByText('الخريطة غير متاحة')).toBeVisible()
-  else await expect(page.getByText('الخريطة غير متاحة')).toHaveCount(0)
+  // route map with numbered stops on wide screens, none on phone / tablet portrait
+  if (info.project.name === 'desktop') {
+    const map = page.getByLabel('خريطة المسار')
+    await expect(map.getByRole('button', { name: 'المحطة 2' })).toBeVisible()
+    await map.getByRole('button', { name: 'المحطة 2' }).click()
+    await expect(page.locator('#stop-11')).toBeInViewport()
+  } else await expect(page.getByLabel('خريطة المسار')).toHaveCount(0)
 
   // the finished trip is listed back on the visits page
   await page.getByRole('link', { name: 'كل الرحلات' }).click()

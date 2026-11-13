@@ -37,6 +37,18 @@ test('set a place by pasting a google maps link', async ({ page }) => {
   await expect(page.getByText('سيُعاد حساب المسافات')).toBeVisible()
 })
 
+test('set a place by tapping the map', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await page.goto('/settings')
+  const work = page.getByTestId('place-work')
+  await work.getByRole('button', { name: 'اختيار من الخريطة' }).click()
+  const canvas = work.locator('canvas.maplibregl-canvas')
+  await expect(canvas).toBeVisible()
+  await canvas.click()
+  await expect(work.getByPlaceholder('الصق إحداثيات أو رابط خرائط Google')).toHaveValue(/^24\.\d+, 46\.\d+$/)
+  await expect(work.locator('.maplibregl-marker')).toHaveCount(1)
+})
+
 test('a bad coordinates paste is flagged and a paused adapter can be resumed', async ({ page }) => {
   await mockApi(page, { loggedIn: true, paused: true })
   await page.goto('/settings')

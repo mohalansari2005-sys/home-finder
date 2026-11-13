@@ -73,7 +73,7 @@ def test_plan_with_missing_route(db):
     assert [s.listing_id for s in sorted(trip.stops, key=lambda s: s.position)] == ids
 
 
-def test_plan_without_google_or_when_google_raises(db):
+def test_plan_without_maps_or_when_maps_raises(db):
     ids = setup(db, 2)
 
     class Boom:

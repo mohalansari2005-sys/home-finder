@@ -156,7 +156,7 @@ def make_tools(session_factory):
     def suggest_visit_trip() -> str:
         """يقترح أفضل 3 مجموعات من العقارات المحفوظة (حسب الحي) لزيارتها في رحلة واحدة."""
         with session_factory() as s:
-            groups, no_coords = group_bookmarks(s, visits_routes.get_google())
+            groups, no_coords = group_bookmarks(s, visits_routes.get_maps())
             top = groups[:3]
             by_id = {l.id: l for l in s.scalars(select(Listing).where(
                 Listing.id.in_([i for g in top for i in g.listing_ids[:3]])))}
@@ -182,7 +182,7 @@ def make_tools(session_factory):
             except ValueError as e:
                 raise TripError("التاريخ بصيغة YYYY-MM-DD والوقت بصيغة HH:MM") from e
             with session_factory() as s:
-                trip = create_trip_from_request(s, visits_routes.get_google(), listing_ids=listing_ids, d=d, t=t,
+                trip = create_trip_from_request(s, visits_routes.get_maps(), listing_ids=listing_ids, d=d, t=t,
                                                 origin_kind=origin_kind, minutes_per_visit=minutes_per_visit)
                 out = trip_out(s, trip)
         except TripError as e:

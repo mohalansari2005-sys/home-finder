@@ -36,6 +36,7 @@ export function makeTrip(id: number, listingIds: number[], o: { date?: string; s
     warnings: [], total_drive_min: 20 + 10 * listingIds.length, maps_url: 'https://www.google.com/maps/dir/?api=1&origin=24.7,46.6', stops }
 }
 
+const BLANK_STYLE = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e5e7eb' } }] }
 const sse = (events: object[]) => events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('')
 const BUDGET = 'تم الوصول إلى الحد الشهري لاستخدام المساعد'
 
@@ -73,6 +74,10 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
   const state = { reacts: [] as Record<string, unknown>[], suggestionCalls: [] as string[], trips: [] as Trip[], tripPosts: [] as Record<string, unknown>[],
     stopPatches: [] as Record<string, unknown>[], photoUploads: 0, prechecks: 0 }
   if (opts.trips) state.trips.push(makeTrip(1, [1, 2], { priceChange: opts.priceChange }))
+  // the map runs offline: a blank style instead of OpenFreeMap's, so tests never depend on its tile servers
+  await page.route('https://tiles.openfreemap.org/**', (route) => (route.request().url().includes('/styles/')
+    ? route.fulfill({ contentType: 'application/json', body: JSON.stringify(BLANK_STYLE) })
+    : route.abort()))
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
     const m = route.request().method()

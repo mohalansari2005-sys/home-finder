@@ -177,9 +177,10 @@ class AdapterHealth(Base):
 
 class ApiUsage(Base):
     __tablename__ = "api_usage"
-    provider: Mapped[str] = mapped_column(String(16), primary_key=True)  # openai|google
-    month: Mapped[str] = mapped_column(String(7), primary_key=True)  # YYYY-MM (Asia/Riyadh)
-    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    provider: Mapped[str] = mapped_column(String(16), primary_key=True)  # openai|tomtom
+    # Asia/Riyadh. openai: YYYY-MM. tomtom: a YYYY-MM row and a YYYY-MM-DD row (its free tier counts requests).
+    period: Mapped[str] = mapped_column(String(10), primary_key=True)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)  # openai only
     calls: Mapped[int] = mapped_column(Integer, default=0)
 
 
