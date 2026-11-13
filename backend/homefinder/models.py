@@ -187,3 +187,12 @@ class PreferenceChange(Base):
     source: Mapped[str] = mapped_column(String(10))  # user|learner|agent
     diff: Mapped[dict] = mapped_column(JSONB)
     explanation: Mapped[str] = mapped_column(Text)
+
+
+class ChatThread(Base):
+    """Metadata for an assistant conversation. The messages live in the LangGraph Postgres checkpointer."""
+    __tablename__ = "chat_threads"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)  # uuid4
+    title: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

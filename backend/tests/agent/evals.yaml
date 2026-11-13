@@ -1,0 +1,55 @@
+- name: budget
+  messages: ["ميزانيتنا ٢ مليون"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.price_max: 2000000}
+- name: district_add
+  messages: ["نبي بس في النرجس والياسمين"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.districts: ["النرجس", "الياسمين"]}
+- name: weight_school_over_work
+  messages: ["المدرسة أهم من الدوام"]
+  expect_tools: [update_preferences]
+  expect_prefs_cmp: ["weights.commute_school > weights.commute_work"]
+- name: min_bedrooms
+  messages: ["لازم ٥ غرف على الأقل"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.min_bedrooms: 5}
+- name: no_old_houses
+  messages: ["ما نبي بيوت عمرها فوق ١٠ سنين"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.building_age_max: 10}
+- name: wide_street
+  messages: ["الشارع لازم ٢٠ متر وفوق"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.street_width_min: 20}
+- name: work_commute_cap
+  messages: ["ما نبي أكثر من نص ساعة للدوام"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.max_commute.work: 30}
+- name: apartments_too
+  messages: ["عادي شقق بعد"]
+  expect_tools: [update_preferences]
+  expect_prefs_contains: {hard_filters.property_types: apartment}
+- name: show_best
+  messages: ["وش أفضل ٣ بيوت عندك؟"]
+  expect_tools: [search_listings]
+- name: show_in_district
+  messages: ["عطني اللي في الملقا"]
+  expect_tools: [search_listings]
+- name: compare
+  messages: ["قارن لي بين أول اثنين"]
+  expect_tools: [search_listings, compare_listings]
+- name: details
+  messages: ["وش عيوب أول واحد؟"]
+  expect_tools: [search_listings, get_listing]
+- name: new_search
+  messages: ["دوّر لنا إعلانات جديدة"]
+  expect_tools: [request_scrape]
+- name: show_prefs
+  messages: ["وش الشروط اللي محطوطة حالياً؟"]
+  expect_tools: [get_preferences]
+- name: multi_turn
+  messages: ["نبي فيلا", "بحدود مليونين ونص", "وقريبة من الجامعة"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.price_max: 2500000}
+  expect_prefs_cmp: ["weights.commute_university > 0.6"]
