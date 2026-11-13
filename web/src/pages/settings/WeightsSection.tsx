@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Lock, LockOpen, RotateCcw, Save } from 'lucide-react'
 import type { Preferences } from '../../api/types'
 import { FACTOR_AR, type Factor } from '../../lib/factors'
+import { formatDecimal } from '../../lib/format'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
@@ -42,7 +43,7 @@ export function WeightsSection({ prefs, onSave, pending, error }: Props) {
                 <Slider dir="rtl" min={0} max={3} step={0.1} value={[value]} aria-label={FACTOR_AR[f]}
                         onValueChange={([v]) => setDraft({ ...draft, [f]: round1(v) })}
                         className="col-span-3 row-start-2 md:col-span-1 md:col-start-2 md:row-start-1" />
-                <bdi className="col-start-2 row-start-1 text-end text-sm font-semibold tabular-nums md:col-start-3">{value.toFixed(1)}</bdi>
+                <bdi className="col-start-2 row-start-1 text-end text-sm font-semibold tabular-nums md:col-start-3">{formatDecimal(value)}</bdi>
                 {locked ? (
                   <Button variant="secondary" size="icon" aria-pressed aria-label={`إلغاء تثبيت ${FACTOR_AR[f]}`}
                           onClick={() => onSave({ unlock: [f] })} className="col-start-3 row-start-1 bg-primary/10 text-primary md:col-start-4">
