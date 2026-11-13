@@ -59,3 +59,12 @@ def test_react_flow(db, family):
 def test_map_excludes_no_coords_and_rejected(db, family):
     a = mk(db); mk(db, lat=None, lng=None, geom=None, geo_precision="none"); mk(db, family_status="rejected")
     assert [p["id"] for p in family.get("/api/map").json()] == [a.id]
+
+
+def test_removed_listing_hidden_from_feed_but_kept_in_bookmarks_with_status(db, family):
+    gone = mk(db, status="removed", family_status="bookmarked"); live = mk(db)
+    assert [i["id"] for i in family.get("/api/feed").json()["items"]] == [live.id]
+    items = family.get("/api/feed?view=bookmarked").json()["items"]
+    assert [(i["id"], i["status"]) for i in items] == [(gone.id, "removed")]
+    assert family.get("/api/feed").json()["items"][0]["status"] == "active"
+    assert family.get(f"/api/listings/{gone.id}").json()["status"] == "removed"

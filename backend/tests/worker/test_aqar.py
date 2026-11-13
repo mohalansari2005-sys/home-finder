@@ -87,3 +87,47 @@ def test_health_flags_mostly_missing_prices():
     bad = [parse_listing({"id": i, "category": 3, "price": None, "area": 300, "district": "x", "path": "/p"}) for i in range(12)]
     rep = a.health(bad)
     assert not rep.ok and "price" in rep.reason
+
+
+def test_street_direction_mapping_matches_aqar_dictionary():
+    """Aqar's own dictionary: 3 = west, 4 = south (the M1 mapping had them swapped), see docs/sources/aqar.md."""
+    expected = {1: "north", 2: "east", 3: "west", 4: "south", 5: "northeast", 6: "southeast", 7: "southwest", 8: "northwest"}
+    for sd, facing in expected.items():
+        assert parse_listing({"id": 1, "category": 3, "street_direction": sd, "path": "/a"}).fields.facing == facing
+    assert parse_listing({"id": 1, "category": 3, "street_direction": 9, "path": "/a"}).fields.street_count == 3
+    assert parse_listing({"id": 1, "category": 3, "street_direction": 10, "path": "/a"}).fields.street_count == 4
+    # the live by-id fixture's details text says "الواجهة غرب" for street_direction 3
+    d = load("listing_by_id.json")["data"]["Web"]["listing"]
+    assert d["street_direction"] == 3 and parse_listing(d).fields.facing == "west"
+
+
+class ByIdTransport:
+    def __init__(self, resp): self.resp, self.calls = resp, []
+    def post_graphql(self, body): self.calls.append(body); return self.resp
+    def close(self): pass
+
+
+def test_fetch_by_id_uses_listing_query_and_parses():
+    t = ByIdTransport(load("listing_by_id.json"))
+    r = AqarAdapter(t, pacer=nosleep_pacer()).fetch("6906153")
+    assert t.calls[0]["operationName"] == "getListing" and t.calls[0]["variables"] == {"id": 6906153}
+    assert "listing(id: $id)" in t.calls[0]["query"] and "extended_details" not in t.calls[0]["query"]
+    assert r.source == "aqar" and r.source_id == "6906153" and r.fields.price == 3_150_000
+    assert r.fields.property_type == "villa" and r.fields.land_area_m2 == 250 and r.fields.built_area_m2 is None
+
+
+def test_fetch_returns_none_when_listing_not_found_or_unpublished():
+    assert AqarAdapter(ByIdTransport(load("listing_not_found.json")), pacer=nosleep_pacer()).fetch("999999999") is None
+    d = load("listing_by_id.json")
+    d["data"]["Web"]["listing"]["published"] = False
+    assert AqarAdapter(ByIdTransport(d), pacer=nosleep_pacer()).fetch("6906153") is None
+
+
+def test_fetch_raises_on_unexpected_graphql_error():
+    import pytest
+    bad = {"errors": [{"code": 414, "message": "Field x is not defined"}], "data": None}
+    with pytest.raises(RuntimeError):
+        AqarAdapter(ByIdTransport(bad), pacer=nosleep_pacer()).fetch("1")
+    weird = {"data": {"Web": {"listing": None}}, "errors": [{"code": "Boom", "message": ""}]}
+    with pytest.raises(RuntimeError):
+        AqarAdapter(ByIdTransport(weird), pacer=nosleep_pacer()).fetch("1")

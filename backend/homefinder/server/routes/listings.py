@@ -30,7 +30,7 @@ def card(l: Listing, photos: list[str] | None) -> dict:
             "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "built_area_m2": l.built_area_m2,
             "land_area_m2": l.land_area_m2, "photo_url": (photos or [None])[0], "score": l.score,
             "commutes": l.commutes or {}, "family_status": l.family_status,
-            "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
+            "status": l.status, "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
             "price_drop": None}
 
 
@@ -102,5 +102,5 @@ def map_points(s: Session = Depends(get_db)):
                                                 Listing.family_status != "rejected").limit(2000)))
     photos = _photo_urls(s, [l.id for l in rows])
     return [{"id": l.id, "lat": l.lat, "lng": l.lng, "price": l.price, "score": l.score,
-             "family_status": l.family_status, "title": l.title, "district": l.district,
-             "photo_url": (photos.get(l.id) or [None])[0]} for l in rows]
+             "family_status": l.family_status, "status": l.status, "title": l.title,
+             "district": l.district, "photo_url": (photos.get(l.id) or [None])[0]} for l in rows]

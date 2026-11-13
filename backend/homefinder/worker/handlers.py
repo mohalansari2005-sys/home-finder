@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from homefinder import adapters_state, prefs
-from homefinder.models import Listing
+from homefinder.models import Listing, ListingSource
 from homefinder.rescore import apply_score, rescore_all
 from homefinder.schemas import SearchQuery
 from homefinder.worker.enrich.commute import compute_commutes
@@ -85,8 +85,50 @@ def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
     return {"listings": n}
 
 
+def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
+    """Re-fetch one stale listing by id. Gone from every source -> status 'removed'; otherwise ingest (last_seen, price)."""
+    lid = payload["listing_id"]
+    with deps.session_factory() as s:
+        l = s.get(Listing, lid)
+        if l is None or l.merged_into_id or l.status != "active":
+            return {"skipped": "gone"}
+        sources = [(x.source, x.source_id) for x in s.scalars(
+            select(ListingSource).where(ListingSource.listing_id == lid).order_by(ListingSource.id))]
+        paused = [src for src, _ in sources if adapters_state.is_paused(s, src)]
+    live = [(src, sid) for src, sid in sources if src in deps.adapters and src not in paused]
+    if not live:
+        return {"skipped": "paused" if paused else "no_adapter"}
+    refreshed = None
+    for src, sid in live:
+        adapter = deps.adapters[src]()
+        try:
+            raw = adapter.fetch(sid)
+        except AppVersionOutdated as e:
+            log.error("%s: %s", src, e)
+            with deps.session_factory() as s:
+                adapters_state.pause(s, src, f"{src} app-version outdated")
+            return {"skipped": "app_version_outdated"}
+        finally:
+            close = getattr(getattr(adapter, "_t", None), "close", None)
+            if close:
+                close()
+        if raw is not None:
+            with deps.session_factory() as s:
+                res = ingest_raw(s, raw)
+            refreshed = {"refreshed": True, "price_changed": res.price_changed}
+            break
+    if refreshed:
+        return refreshed
+    if len(live) < len(sources):  # a paused/unknown source might still have it: don't call it removed
+        return {"skipped": "paused" if paused else "no_adapter"}
+    with deps.session_factory() as s:
+        s.get(Listing, lid).status = "removed"
+    return {"removed": True}
+
+
 HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "scrape_search": handle_scrape_search,
+    "refresh_listing": handle_refresh_listing,
     "rescore_all": handle_rescore_all,
     "recompute_commutes": handle_recompute_commutes,
     "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),

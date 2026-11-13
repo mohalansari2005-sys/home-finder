@@ -20,7 +20,17 @@ How to find the current value when Aqar bumps it:
 `where.district_id: {eq: <id>}` works with ids from the `getAllDistricts` query (`name` is like "حي النرجس", `district_id`, `count`). Match with `normalize_district`.
 
 ## Lookup by id
-`where: {id: {eq: <id>}}` returned **HTTP 500** in the probe, so a by-id GraphQL lookup is NOT confirmed. `find_by_id.json` is therefore a fixture derived from the first listing of the real search response (same shape), not a captured response. The listing page `https://sa.aqar.fm` + `path` returns HTTP 200 for a live listing (removed-listing behaviour not observed). `AqarAdapter.fetch()` still tries the by-id query; revisit before Plan 3/5 rely on it (try the listing page or another where-key).
+`where: {id: {eq: N}}` fails (HTTP 500: `WhereInput` has no `id` field). The working method is `Web.listing(id: Int!)`, the query the web client uses for the listing page (found by the M3 spike on 2026-11-13):
+
+    query getListing($id: Int!) { Web { listing(id: $id) { ...same fields as search, minus extended_details..., published } } }
+
+- Same endpoint, headers and transport as search.
+- `extended_details` is not a field of `WebListing`, so a by-id result has no villa built area (`internal_area`). Refresh therefore never overwrites known fields with None.
+- **Removed** = `listing` is null with error code `"Listing not found"` (HTTP 200, `message` empty; `code` is a string here), or `published` is false (full object, price still present). Sold, expired and owner-deleted cannot be told apart.
+- `last_update` changes when the platform refreshes a listing; do not use it as a change signal.
+- Fixtures: `listing_by_id.json` (live capture, scrubbed, coordinates rounded to 3 decimals) and `listing_not_found.json`.
+- The `/ad/<id>` web page also works but is ~260 KB and embeds an employee phone number. We never fetch or store anything from it.
+- The schema is undocumented: watch for error code 414 after app-version bumps.
 
 ## Price filter
 `price: {lte: 1500000}` is honoured server-side (20 results, max 1,495,000, min 630,000). The adapter sends it and also filters client-side.
@@ -29,7 +39,7 @@ How to find the current value when Aqar bumps it:
 `imgs` entries are bare filenames (`000553096_1791214332889.jpg`). Real URL: `https://images.aqar.fm/webp/<W>x0/props/<filename>` (from the web client's `LISTING_IMAGES_TEMPLATE`). `640x0` verified: HTTP 200, `image/webp`. The adapter uses `640x0`.
 
 ## street_direction values
-Seen in the sample: 1-8 and null. The mapping 1 north, 2 east, 3 south, 4 west, 5 northeast, 6 southeast, 7 southwest, 8 northwest, 9 three streets, 10 four streets is the plan's expectation; it was NOT cross-checked against listing pages (UNVERIFIED).
+From the client's own dictionary (label "الواجهة"): 1 north, 2 east, **3 west, 4 south**, 5 northeast, 6 southeast, 7 southwest, 8 northwest, 9 "3 streets", 10 "4 streets". M1 had 3 and 4 swapped; fixed in M3 and cross-checked against the listing's `details` text ("الواجهة غرب" for value 3). Seller free text can still disagree with the field; the field wins.
 
 ## age semantics
 `age: 0` for 15 of 20 listings; only 1 of those mentions "جديد". 0 is treated as unknown (`AGE_ZERO_MEANS_NEW = False`).
