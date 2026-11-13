@@ -143,8 +143,8 @@ See [docs/DEPLOY.md](docs/DEPLOY.md). It covers server bootstrap, the `.env` val
   |---|---|---|
   | M1 Foundation | Aqar scraping, enrichment, API, feed, detail, map, deploy, CI | merged |
   | M2 Scoring and settings | explainable score, hard filters, preferences | merged |
-  | M3 Agent, Haraj and dedupe | chat assistant, Haraj, duplicate merge, removed listings, price drops | in progress |
-  | M4 Learning and compare | learning from saves and rejects, suggestions, compare view | planned |
+  | M3 Agent, Haraj and dedupe | chat assistant, Haraj, duplicate merge, removed listings, price drops | merged |
+  | M4 Learning and compare | learning from saves and rejects, suggestions, compare view | merged |
   | M5 Visits | visit trips grouped by district, contact tracking, pre-visit checks | planned |
 
 - The design spec is in `docs/superpowers/specs/`, and the per-milestone plans are in `docs/superpowers/plans/`.
