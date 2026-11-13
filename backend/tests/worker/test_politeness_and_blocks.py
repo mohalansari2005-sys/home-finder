@@ -4,7 +4,7 @@ import pytest
 
 from homefinder.adapters_state import is_paused
 from homefinder.db import session_scope
-from homefinder.models import AdapterHealth, Job
+from homefinder.models import AdapterHealth
 from homefinder.schemas import SearchQuery
 from homefinder.worker.handlers import dispatch
 from homefinder.worker.sources.aqar_transport import Blocked, FallbackTransport

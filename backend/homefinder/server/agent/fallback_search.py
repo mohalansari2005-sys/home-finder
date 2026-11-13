@@ -1,7 +1,7 @@
 """Search from the server when the Mac worker is offline: one page of Aqar via curl_cffi (allowed in the server image)."""
 import logging
 
-from homefinder import prefs
+from homefinder import adapters_state, prefs
 from homefinder.schemas import SearchQuery
 from homefinder.worker.ingest import ingest_raw
 from homefinder.worker.sources.aqar import AqarAdapter
@@ -13,6 +13,8 @@ MAX_INGEST = 20
 
 def run(session_factory, transport_factory=CurlCffiTransport, pacer=None) -> dict:
     with session_factory() as s:
+        if adapters_state.is_paused(s, "aqar"):
+            return {"paused": True}  # the Mac's scrapes are paused too (blocked / app-version); don't hit Aqar from here
         q = SearchQuery.from_hard_filters(prefs.get_or_create(s).hard_filters).model_copy(update={"max_pages": 1})
     q = q.model_copy(update={"districts": q.districts[:2], "property_types": q.property_types[:1]})
     t = transport_factory()

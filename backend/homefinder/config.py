@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     google_monthly_cap_usd: float = 50.0
 
     scrape_interval_hours: float = 4.0
+    # Sent to Aqar as the `app-version` header; bump it in .env when Aqar rejects it (docs/sources/aqar.md)
+    aqar_app_version: str = "1.0.3"
 
 
 @lru_cache

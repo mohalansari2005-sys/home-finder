@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, LLMResult
 
 from homefinder import usage
+from homefinder.db import session_scope
 from homefinder.models import ApiUsage, Listing
 from homefinder.server.agent import fallback_search
 from homefinder.server.agent.costs import UsageCallback
@@ -61,3 +62,12 @@ def test_fallback_search_reports_blocked_and_failures(db):
     assert fallback_search.run(session_scope, transport_factory=lambda: t, pacer=nap) == {"blocked": True} and t.closed
     t2 = FakeTransport(exc=RuntimeError("boom"))
     assert fallback_search.run(session_scope, transport_factory=lambda: t2, pacer=nap) == {"error": "search_failed"} and t2.closed
+
+
+def test_fallback_search_does_nothing_while_aqar_is_paused(db):
+    from homefinder import adapters_state
+    with session_scope() as s:
+        adapters_state.pause(s, "aqar", "aqar app-version outdated")
+    built = []
+    out = fallback_search.run(session_scope, transport_factory=lambda: built.append(1))
+    assert out == {"paused": True} and built == []

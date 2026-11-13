@@ -45,7 +45,7 @@ OPENAI_API_KEY=...
 VITE_GOOGLE_MAPS_KEY=<browser key>
 VITE_GOOGLE_MAP_ID=...
 ```
-Optionally set `AQAR_APP_VERSION` if Aqar bumps its required web-client version (see `docs/sources/aqar.md`).
+Optionally set `AQAR_APP_VERSION` (default `1.0.3`) if Aqar bumps its required web-client version (see `docs/sources/aqar.md`). It is read from this file by the worker at start, so restart the worker after changing it.
 
 ## 6. Seed data (run on the Mac against the server DB)
 ```bash
@@ -66,7 +66,7 @@ Open Settings and confirm the worker shows as متصل (online).
 ## 8. Operations
 - Logs: `docker compose -f deploy/docker-compose.yml logs -f api` on the server; `~/Library/Logs/homefinder/` on the Mac.
 - Restore a backup: `gunzip -c db-DATE.sql.gz | docker compose exec -T db psql -U hf homefinder`.
-- Resume a paused adapter (e.g. "aqar app-version outdated" after fixing the version): `UPDATE adapter_health SET status='ok', reason=NULL;` (Plan 2 adds a button).
+- Resume a paused adapter. An adapter pauses on an Aqar/Haraj block ("… blocked: HTTP 403"), on "aqar app-version outdated" and when a batch looks unhealthy. After an app-version bump: set `AQAR_APP_VERSION` in `backend/.env` on the Mac, run `launchctl kickstart -k gui/$(id -u)/com.homefinder.worker`, then press «استئناف» in Settings → الحالة. The server-side chat fallback search also reads `AQAR_APP_VERSION`, so put it in the server `.env` too and run `docker compose -f deploy/docker-compose.yml --env-file .env up -d api`. After a block, wait some hours before resuming.
 - After upgrading to the coverage-damped score (review fix I4), rescore once so stored scores use the new formula (run on the Mac against the server DB): `cd backend && .venv/bin/python -m homefinder.cli rescore`. A fresh install needs nothing.
 - Keep the Mac awake on power: System Settings, Battery, Options, "Prevent automatic sleeping on power adapter when the display is off".
 - Backups run nightly at 03:15 (DB, 14 kept) and weekly on Friday (photos, 4 kept); set `STORAGE_BOX` in `.env` for an off-box rsync copy.
