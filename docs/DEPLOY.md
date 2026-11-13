@@ -68,7 +68,7 @@ Place coordinates are personal data: they live only in the database, never in gi
 ```bash
 deploy/worker/install-worker.sh
 ```
-Open Settings and confirm the worker shows as متصل (online).
+Open Settings and confirm the worker shows as متصل (online). The script installs the pinned `backend/requirements-worker.lock` (the API image installs `requirements-server.lock` and CI `requirements-ci.lock`). To update dependencies, edit the ranges in `backend/pyproject.toml`, run `scripts/lock-backend.sh` (needs Docker), run the tests and commit the three lock files. An already-installed worker needs no action.
 
 ## 8. Operations
 - Logs: `docker compose -f deploy/docker-compose.yml logs -f api` on the server; `~/Library/Logs/homefinder/` on the Mac.
