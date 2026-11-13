@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from homefinder import jobs
 from homefinder.config import get_settings
-from homefinder.models import Photo, WorkerStatus
+from homefinder.models import Listing, Photo, WorkerStatus
 from homefinder.server.deps import get_db, require_worker
 
 router = APIRouter(dependencies=[Depends(require_worker)])
@@ -58,15 +58,23 @@ def heartbeat(body: HeartbeatBody, s: Session = Depends(get_db)):
     return Response(status_code=204)
 
 
+MAX_UPLOAD = 10 * 1024 * 1024
+
+
 @router.post("/photos", status_code=204)
 def upload_photo(listing_id: int = Form(...), position: int = Form(..., ge=0, le=50), phash: str = Form(""),
                  source_url: str = Form(""), file: UploadFile = File(...), s: Session = Depends(get_db)):
     if phash and not re.fullmatch(r"[0-9a-f]{1,32}", phash):
         raise HTTPException(422, "bad phash")
+    if s.get(Listing, listing_id) is None:
+        raise HTTPException(404, "listing not found")
+    data = file.file.read(MAX_UPLOAD + 1)
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, "photo too large")
     rel = f"{listing_id}/{position}.webp"
     dest = Path(get_settings().photos_dir) / rel
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(file.file.read(10 * 1024 * 1024))
+    dest.write_bytes(data)
     stmt = pg_insert(Photo).values(listing_id=listing_id, position=position, path=rel, phash=phash or None,
                                    source_url=source_url or None)
     s.execute(stmt.on_conflict_do_update(index_elements=["listing_id", "position"],

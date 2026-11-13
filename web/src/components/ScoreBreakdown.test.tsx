@@ -24,3 +24,12 @@ it('handles no score', () => {
   render(<ScoreBreakdown breakdown={null} />)
   expect(screen.getByText('لا يوجد تقييم بعد')).toBeInTheDocument()
 })
+
+it('flags a rough score when most data is missing, and not otherwise', () => {
+  const { rerender } = render(<ScoreBreakdown breakdown={{ ...b, coverage: 0.06 }} />)
+  expect(screen.getByText('تقييم تقريبي: بيانات كثيرة غير مذكورة')).toBeInTheDocument()
+  rerender(<ScoreBreakdown breakdown={{ ...b, coverage: 0.8 }} />)
+  expect(screen.queryByText(/تقييم تقريبي/)).toBeNull()
+  rerender(<ScoreBreakdown breakdown={b} />) // scores stored before the coverage field existed
+  expect(screen.queryByText(/تقييم تقريبي/)).toBeNull()
+})

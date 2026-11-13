@@ -17,9 +17,21 @@ server {
   server_name ${DOMAIN};
   ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-  add_header Strict-Transport-Security "max-age=31536000" always;
+  # add_header in a location replaces the server-level ones, so every location that sets its own includes the snippet
+  include /etc/nginx/snippets/security-headers.conf;
+  gzip on;
+  gzip_types application/javascript text/css application/json image/svg+xml;
   root /usr/share/nginx/html;
 
+  # visit photos: the API accepts up to 8 MB; nginx's default 1 MB would answer 413 first
+  location ~ ^/api/visits/stops/[0-9]+/photos$ {
+    client_max_body_size 9m;
+    proxy_pass http://api:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+  }
   location /api/ {
     proxy_pass http://api:8000;
     proxy_set_header Host $host;
@@ -30,8 +42,8 @@ server {
     proxy_read_timeout 300s;
   }
   location /worker/ { allow 100.64.0.0/10; deny all; proxy_pass http://api:8000; client_max_body_size 12m; }
-  location /photos/ { alias /data/photos/; expires 30d; add_header Cache-Control "public"; }
-  location = /sw.js { add_header Cache-Control "no-cache"; }
-  location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; }
+  location /photos/ { alias /data/photos/; expires 30d; add_header Cache-Control "public"; include /etc/nginx/snippets/security-headers.conf; }
+  location = /sw.js { add_header Cache-Control "no-cache"; include /etc/nginx/snippets/security-headers.conf; }
+  location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; include /etc/nginx/snippets/security-headers.conf; }
   location / { try_files $uri /index.html; }
 }

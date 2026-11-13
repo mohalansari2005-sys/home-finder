@@ -39,3 +39,35 @@ def test_rescore_job(db):
     db.add(Listing(price=1_000_000)); db.commit()
     deps = WorkerDeps(session_factory=session_scope, adapters={}, llm=None, google=None, photo_sink=None, http=None)
     assert dispatch(deps, "rescore_all", {}) == {"rescored": 1}
+
+
+def test_cli_rescore_recomputes_every_listing(db):
+    from homefinder import cli
+    from homefinder.models import Listing
+    db.add(Listing(title="x", has_yard=True, has_elevator=True, score=100)); db.commit()
+    cli.main(["rescore"])
+    db.expire_all()
+    l = db.query(Listing).one()
+    assert l.score is not None and l.score < 60 and l.score_breakdown["coverage"] < 0.2
+
+
+def test_preference_writers_take_a_row_lock(db):
+    """M13: a learner run and a Settings save must not interleave and overwrite each other's weights."""
+    from sqlalchemy import event
+    from homefinder import prefs
+    from homefinder.db import get_engine, session_scope
+    from homefinder.server.routes.settings import PrefsPatch, apply_prefs_patch
+    prefs.get_or_create(db); db.commit()
+    seen: list[str] = []
+    grab = lambda conn, cur, st, *a: seen.append(st)  # noqa: E731
+    event.listen(get_engine(), "before_cursor_execute", grab)
+    try:
+        with session_scope() as s:
+            apply_prefs_patch(s, PrefsPatch(weights={"yard": 2}), "user", "x")
+        with session_scope() as s:
+            from homefinder.learner import run_learn
+            run_learn(s)
+    finally:
+        event.remove(get_engine(), "before_cursor_execute", grab)
+    locks = [x for x in seen if "FROM preferences" in x and "FOR UPDATE" in x]
+    assert len(locks) >= 2

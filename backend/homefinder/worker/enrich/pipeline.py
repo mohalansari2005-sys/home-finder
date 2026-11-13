@@ -17,7 +17,10 @@ log = logging.getLogger(__name__)
 RETRY_DELAY = timedelta(hours=6)
 
 
-def enrich_listing(deps, listing_id: int) -> dict:
+MAX_RETRIES = 5
+
+
+def enrich_listing(deps, listing_id: int, attempt: int = 0) -> dict:
     requeue = False
     with deps.session_factory() as s:
         l = s.get(Listing, listing_id)
@@ -44,12 +47,18 @@ def enrich_listing(deps, listing_id: int) -> dict:
                 requeue = True
         apply_score(l, prefs.get_or_create(s))
         l.enriched_at = func.now()
-        need_photos = not l.photos_fetched and deps.photo_sink is not None and deps.http is not None
+        # Photos cost disk: only for listings the family can actually see. Others get them from the daily
+        # fetch_missing_photos catch-up if they become visible later.
+        visible = l.family_status != "rejected" and (l.passes_filters or l.family_status in ("bookmarked", "visited"))
+        need_photos = not l.photos_fetched and visible and deps.photo_sink is not None and deps.http is not None
         urls = next((src.photo_urls for src in s.scalars(select(ListingSource).where(
             ListingSource.listing_id == listing_id)) if src.photo_urls), [])
         commutes = len(l.commutes or {})
+        if requeue and attempt >= MAX_RETRIES:
+            log.error("enrich %s: giving up after %d retries", listing_id, attempt)
+            requeue = False  # a permanently failing step (bad key, schema error) must not retry forever
         if requeue:
-            jobs.enqueue(s, "enrich_listing", {"listing_id": listing_id},
+            jobs.enqueue(s, "enrich_listing", {"listing_id": listing_id, "attempt": attempt + 1},
                          dedupe_key=f"enrich-retry:{listing_id}", delay=RETRY_DELAY)
     photos = 0
     if need_photos and urls:

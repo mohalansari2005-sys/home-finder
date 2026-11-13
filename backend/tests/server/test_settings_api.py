@@ -35,6 +35,22 @@ def test_status_shape(family):
     assert s["worker"]["online"] is False and s["jobs"] == {"pending": 0, "claimed": 0, "failed": 0}
 
 
+def test_status_reports_free_disk_space_of_the_photos_volume(family, monkeypatch):
+    import shutil
+    from collections import namedtuple
+    U = namedtuple("U", "total used free")
+    seen = []
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: seen.append(str(p)) or U(40 * 2**30, 33 * 2**30, 7 * 2**30))
+    d = family.get("/api/status").json()["disk"]
+    assert d == {"free_gb": 7.0, "total_gb": 40.0} and seen
+
+
+def test_status_disk_is_null_when_the_volume_cannot_be_read(family, monkeypatch):
+    import shutil
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: (_ for _ in ()).throw(OSError("gone")))
+    assert family.get("/api/status").json()["disk"] is None
+
+
 def test_get_preferences_returns_effective_defaults(family):
     p = family.get("/api/preferences").json()
     assert p["weights"]["commute_work"] == 1.0 and p["targets"]["commute_bad_min"] == 40
@@ -91,4 +107,18 @@ def test_status_counts_and_last_scrape(db, family):
     db.add(AdapterHealth(source="aqar", status="ok", last_success_at=datetime(2026, 1, 1, tzinfo=UTC))); db.commit()
     s = family.get("/api/status").json()
     assert s["counts"] == {"active": 4, "new": 2, "bookmarked": 1, "rejected": 1, "passing": 2}
-    assert s["adapters"][0]["last_scrape_at"] == s["adapters"][0]["last_success_at"] != None  # noqa: E711
+    assert s["adapters"][0]["last_success_at"] and s["adapters"][0]["last_scrape_at"] is None  # no scrape job has finished
+
+
+def test_status_last_scrape_is_the_last_finished_scrape_job_not_the_last_success(db, family):
+    """M21: last_scrape_at used to repeat last_success_at."""
+    from datetime import datetime, UTC
+    from homefinder.models import AdapterHealth
+    t_ok, t_scrape = datetime(2026, 11, 1, 6, 0, tzinfo=UTC), datetime(2026, 11, 2, 6, 0, tzinfo=UTC)
+    db.add(AdapterHealth(source="aqar", status="ok", last_success_at=t_ok))
+    db.add(Job(type="scrape_search", payload={"source": "aqar"}, status="done", finished_at=t_scrape))
+    db.add(Job(type="scrape_search", payload={"source": "aqar"}, status="pending"))
+    db.add(Job(type="scrape_search", payload={"source": "haraj"}, status="done", finished_at=datetime(2026, 12, 1, tzinfo=UTC)))
+    db.commit()
+    a = family.get("/api/status").json()["adapters"][0]
+    assert a["last_success_at"] == t_ok.isoformat() and a["last_scrape_at"] == t_scrape.isoformat()

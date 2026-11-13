@@ -48,12 +48,14 @@ def test_score_explains():
     assert r.contributions == sorted(r.contributions, key=lambda c: -c["delta"])
     assert "street_width" in r.missing
     d = r.as_dict()
-    assert set(d) == {"total", "contributions", "missing"}
+    assert set(d) == {"total", "contributions", "missing", "coverage"}
 
 
 def test_score_with_mostly_missing():
     r = score(L(price=1_000_000), HF, {}, {})
-    assert r.total == 100.0 and len(r.contributions) == 1 and len(r.missing) == len([f for f in FACTORS if DEFAULT_WEIGHTS[f] > 0]) - 1
+    # facing is not applicable (no preferred facings), so it is not "missing data"
+    assert len(r.contributions) == 1 and len(r.missing) == len([f for f in FACTORS if DEFAULT_WEIGHTS[f] > 0]) - 2
+    assert 50 < r.total < 60 and r.coverage < 0.2
 
 
 def test_all_zero_weights():
@@ -82,3 +84,56 @@ def test_district_filter_normalizes():
     for d in ["حي النرجس", "النرجس ", "النّرجس"]:
         assert passes_hard_filters(L(district=d), {"districts": ["النرجس"]})[0], d
     assert passes_hard_filters(L(district="الأندلس"), {"districts": ["حي الاندلس"]})[0]
+
+
+# --- I4: coverage damping (unknown factors count as an average 0.5, never as excluded) -------------------
+
+def _old_score(l, hf, w, t):
+    """The pre-damping formula: renormalise over present factors only."""
+    from homefinder.scoring import effective_weights
+    w = effective_weights(w)
+    vals = factor_values(l, hf, t)
+    pres = {f: x for f, x in vals.items() if x is not None and w.get(f, 0) > 0}
+    return round(100 * sum(w[f] * x for f, x in pres.items()) / sum(w[f] for f in pres), 1)
+
+
+COMPLETE = dict(price=1_600_000, built_area_m2=360, land_area_m2=420, building_age_years=4, street_width_m=20,
+                bedrooms=5, bathrooms=4, street_count=3, deed_type="electronic", has_maid_room=True,
+                has_driver_room=True, has_yard=True, has_elevator=True,
+                commutes={"school": 14, "work": 22, "university": 25, "airport": 30})
+PRICE_ONLY_HF = {"price_max": 2_000_000}
+
+
+def test_sparse_listing_no_longer_outranks_a_complete_one():
+    sparse = score(L(has_yard=True, has_elevator=True), PRICE_ONLY_HF, {}, {})
+    full = score(L(**COMPLETE), PRICE_ONLY_HF, {}, {})
+    assert sparse.total == pytest.approx(53.1, abs=0.05)
+    assert sparse.total < 60 and sparse.total < full.total
+    assert sparse.coverage == pytest.approx(0.06, abs=0.005)
+
+
+def test_complete_listing_score_is_unchanged_by_damping():
+    r = score(L(**COMPLETE), PRICE_ONLY_HF, {}, {})
+    assert r.coverage == 1.0 and r.missing == []
+    assert r.total == _old_score(L(**COMPLETE), PRICE_ONLY_HF, {}, {})
+
+
+@pytest.mark.parametrize("kw", [dict(has_yard=True, has_elevator=True), dict(price=1_900_000, bedrooms=3),
+                                COMPLETE, dict(building_age_years=30, commutes={"work": 50})])
+def test_deltas_add_up_to_total_minus_50(kw):
+    r = score(L(**kw), PRICE_ONLY_HF, {}, {})
+    assert sum(c["delta"] for c in r.contributions) == pytest.approx(r.total - 50, abs=0.2)
+
+
+def test_not_applicable_factors_are_neither_missing_nor_in_coverage():
+    r = score(L(has_yard=True), {}, {}, {})  # no price_max, no preferred facings
+    assert "price" not in r.missing and "facing" not in r.missing
+    w = {k: v for k, v in DEFAULT_WEIGHTS.items() if k not in ("price", "facing")}
+    assert r.coverage == pytest.approx(w["yard"] / sum(w.values()), abs=0.01)
+    r2 = score(L(has_yard=True), HF, {}, {"preferred_facings": ["north"]})
+    assert "price" in r2.missing and "facing" in r2.missing
+
+
+def test_no_present_factors_gives_no_score():
+    r = score(L(), PRICE_ONLY_HF, {}, {})
+    assert r.total is None and r.contributions == [] and r.coverage == 0.0 and r.missing

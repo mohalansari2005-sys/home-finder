@@ -69,6 +69,24 @@ def _tool_payload(m: ToolMessage) -> dict:
     return out if isinstance(out, dict) else {}
 
 
+def _close_dangling_tool_calls(agent, config) -> None:
+    """A stop/disconnect can checkpoint an AIMessage(tool_calls) whose tool results were dropped; OpenAI then
+    rejects every later turn on that thread. Answer each orphaned call with a 'cancelled' tool result."""
+    # Read the persisted checkpoint, not agent.get_state(): get_state overlays the unfinished tools task's
+    # pending writes, which the next run discards, so it would report the call as answered.
+    tup = agent.checkpointer.get_tuple(config)
+    msgs = ((tup.checkpoint.get("channel_values") or {}).get("messages") or []) if tup else []
+    answered = {m.tool_call_id for m in msgs if isinstance(m, ToolMessage)}
+    last_ai = next((m for m in reversed(msgs) if isinstance(m, AIMessage)), None)
+    if last_ai is None:
+        return
+    missing = [tc for tc in last_ai.tool_calls if tc["id"] not in answered]
+    if missing:
+        agent.update_state(config, {"messages": [
+            ToolMessage(content='{"error": "cancelled by user"}', tool_call_id=tc["id"], name=tc["name"])
+            for tc in missing]}, as_node="tools")
+
+
 def _event_stream(message: str, thread_id: str | None, disconnected: Callable[[], bool]) -> Iterator[str]:
     tid = _ensure_thread(thread_id, message)
     yield _sse({"type": "thread", "thread_id": tid})
@@ -83,6 +101,7 @@ def _event_stream(message: str, thread_id: str | None, disconnected: Callable[[]
     try:
         agent = build_agent(make_chat_model(), make_tools(session_scope), get_checkpointer())
         config = {"configurable": {"thread_id": tid}, "callbacks": [UsageCallback()]}
+        _close_dangling_tool_calls(agent, config)
         for mode, data in agent.stream({"messages": [HumanMessage(message)]}, config, stream_mode=["messages", "updates"]):
             if disconnected():
                 return  # state up to the last completed step is already checkpointed

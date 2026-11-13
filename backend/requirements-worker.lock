@@ -1,0 +1,124 @@
+alembic==1.20.1
+    # via homefinder (pyproject.toml)
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.16.0
+    # via
+    #   httpx
+    #   httpx2
+    #   openai
+certifi==2026.10.23
+    # via
+    #   curl-cffi
+    #   httpcore
+    #   httpx
+cffi==2.1.1
+    # via curl-cffi
+cloudpickle==3.1.2
+    # via joblib
+curl-cffi==0.17.0
+    # via homefinder (pyproject.toml)
+geoalchemy2==0.21.0
+    # via homefinder (pyproject.toml)
+greenlet==3.5.6
+    # via playwright
+h11==0.16.0
+    # via
+    #   httpcore
+    #   httpcore2
+httpcore==1.0.9
+    # via httpx
+httpcore2==2.16.0
+    # via httpx2
+httpx==0.28.1
+    # via homefinder (pyproject.toml)
+httpx2==2.16.0
+    # via openai
+idna==3.20
+    # via
+    #   anyio
+    #   httpx
+    #   httpx2
+imagehash==4.3.2
+    # via homefinder (pyproject.toml)
+jiter==0.19.0
+    # via openai
+joblib==1.6.0
+    # via scikit-learn
+mako==1.4.3
+    # via alembic
+markupsafe==3.0.4
+    # via mako
+narwhals==2.28.0
+    # via scikit-learn
+numpy==2.5.4
+    # via
+    #   homefinder (pyproject.toml)
+    #   imagehash
+    #   pywavelets
+    #   scikit-learn
+    #   scipy
+openai==3.50.0
+    # via homefinder (pyproject.toml)
+packaging==26.3
+    # via geoalchemy2
+pillow==13.0.0
+    # via
+    #   homefinder (pyproject.toml)
+    #   imagehash
+playwright==1.65.1
+    # via homefinder (pyproject.toml)
+psycopg==3.3.9
+    # via homefinder (pyproject.toml)
+psycopg-binary==3.3.9
+    # via psycopg
+pycparser==3.12
+    # via cffi
+pydantic==2.14.3
+    # via
+    #   homefinder (pyproject.toml)
+    #   openai
+    #   pydantic-settings
+pydantic-core==2.50.4
+    # via pydantic
+pydantic-settings==2.16.3
+    # via homefinder (pyproject.toml)
+python-dotenv==1.2.4
+    # via pydantic-settings
+pywavelets==1.10.0
+    # via imagehash
+scikit-learn==1.9.1
+    # via homefinder (pyproject.toml)
+scipy==1.18.1
+    # via
+    #   imagehash
+    #   scikit-learn
+sniffio==1.3.1
+    # via openai
+sqlalchemy==2.1.8
+    # via
+    #   alembic
+    #   geoalchemy2
+    #   homefinder (pyproject.toml)
+threadpoolctl==3.8.0
+    # via scikit-learn
+truststore==0.10.5
+    # via
+    #   httpcore2
+    #   httpx2
+typing-extensions==4.16.0
+    # via
+    #   alembic
+    #   anyio
+    #   httpx2
+    #   openai
+    #   psycopg
+    #   pydantic
+    #   pydantic-core
+    #   pydantic-settings
+    #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.5
+    # via
+    #   pydantic
+    #   pydantic-settings

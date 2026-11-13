@@ -1,16 +1,38 @@
 import { CircleAlert, Play, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useResumeAdapter, useStatus } from '../../api/hooks'
-import { formatNumber, formatRelative } from '../../lib/format'
+import { formatDecimal, formatNumber, formatRelative } from '../../lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { SystemStatus } from '../../api/types'
 
 const SOURCE_AR: Record<string, string> = { aqar: 'عقار', haraj: 'حراج' }
 const COUNTS: [keyof import('../../api/types').SystemStatus['counts'], string][] = [
   ['active', 'نشطة'], ['passing', 'مطابقة للشروط'], ['new', 'جديدة'], ['bookmarked', 'محفوظة'], ['rejected', 'مستبعدة'],
 ]
+
+const LOW_DISK_GB = 5
+
+/** Free space of the server volume that holds the photos and the nightly database dumps. */
+export function DiskNote({ disk }: { disk: SystemStatus['disk'] }) {
+  if (!disk) return null
+  const low = disk.free_gb < LOW_DISK_GB
+  return (
+    <div className="space-y-1 border-t pt-4">
+      <p className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground">مساحة القرص الحرة</span>
+        <span className="font-semibold"><bdi>{formatDecimal(disk.free_gb)}</bdi> من <bdi>{formatDecimal(disk.total_gb)}</bdi> غيغابايت</span>
+      </p>
+      {low && (
+        <p role="alert" className="flex items-center gap-2 rounded-xl bg-warning-soft px-3 py-2 text-warning">
+          <CircleAlert aria-hidden className="size-4 shrink-0" />المساحة شارفت على النفاد، افحص النسخ الاحتياطية والصور.
+        </p>
+      )}
+    </div>
+  )
+}
 
 export function StatusSection() {
   const s = useStatus()
@@ -27,7 +49,7 @@ export function StatusSection() {
         ) : !s.data ? (
           <div className="space-y-3" aria-busy><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-2/3" /></div>
         ) : (() => {
-          const { worker, jobs, adapters, failed_jobs, counts } = s.data
+          const { worker, jobs, adapters, failed_jobs, counts, disk } = s.data
           return (
             <>
               <div className="space-y-1.5">
@@ -70,6 +92,7 @@ export function StatusSection() {
                   <div key={k} className="flex items-baseline justify-between gap-2"><dt className="text-muted-foreground">{label}</dt><dd className="font-semibold"><bdi>{formatNumber(counts[k])}</bdi></dd></div>
                 ))}
               </dl>
+              <DiskNote disk={disk} />
               {failed_jobs.length > 0 && (
                 <div className="space-y-1 border-t pt-4">
                   <h3 className="font-medium">آخر الأخطاء</h3>

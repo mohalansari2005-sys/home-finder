@@ -140,6 +140,7 @@ class Job(Base):
         Index("uq_jobs_active_dedupe", "dedupe_key", unique=True,
               postgresql_where=text("status IN ('pending','claimed')")),
         Index("ix_jobs_pending", "status", "run_after"),
+        Index("ix_jobs_type_created", "type", "created_at"),
     )
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     type: Mapped[str] = mapped_column(String(32))

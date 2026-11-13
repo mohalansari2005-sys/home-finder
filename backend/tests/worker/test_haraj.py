@@ -43,6 +43,16 @@ def test_district_regex_falls_back_to_body():
     assert r.fields.district == "النرجس الشمالي"
 
 
+def test_district_regex_does_not_swallow_the_word_after_the_name():
+    """M10: «حي القيروان للبيع» used to give district 'القيروان للبيع', which then failed the district filter."""
+    cases = {"فيلا حي القيروان للبيع": "القيروان", "للبيع فيلا في حي النرجس شمال الرياض": "النرجس",
+             "حي الملك فهد للبيع": "الملك فهد", "فيلا حي الياسمين بسعر مغري": "الياسمين",
+             "فيلا حي الملقا بالرياض": "الملقا", "حي النرجس الشمالي قريبة": "النرجس الشمالي"}
+    for title, want in cases.items():
+        r = parse_post(minimal(title=title, geoNeighborhood=None, bodyTEXT="x"), field_map_override=True)
+        assert r.fields.district == want, title
+
+
 def test_rent_posts_skipped():
     assert parse_post({"id": 2, "title": "فيلا للإيجار", "tags": ["فلل للإيجار"], "city": "الرياض"}, field_map_override=True) is None
     # sale tag but the title says rent

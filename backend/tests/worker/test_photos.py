@@ -13,7 +13,7 @@ def jpeg(w=3000, h=2000):
 def test_process_image_resizes_to_webp():
     data, ph = process_image(jpeg())
     im = Image.open(BytesIO(data))
-    assert im.format == "WEBP" and max(im.size) == 1600 and len(ph) == 16
+    assert im.format == "WEBP" and max(im.size) == 1280 and len(ph) == 16
 
 
 class Sink:
@@ -21,7 +21,7 @@ class Sink:
     def upload(self, listing_id, position, data, phash, source_url): self.got.append((listing_id, position, source_url))
 
 
-def test_fetch_photos_skips_broken_and_caps_at_10():
+def test_fetch_photos_skips_broken_and_caps_at_6():
     def h(req):
         if "bad" in str(req.url):
             return httpx.Response(404)
@@ -29,7 +29,7 @@ def test_fetch_photos_skips_broken_and_caps_at_10():
     sink = Sink()
     urls = ["https://i/bad.jpg"] + [f"https://i/{i}.jpg" for i in range(15)]
     n = fetch_photos(httpx.Client(transport=httpx.MockTransport(h)), sink, 9, urls, sleep=lambda s: None)
-    assert n == 9 and [g[1] for g in sink.got] == list(range(9))
+    assert n == 5 and [g[1] for g in sink.got] == list(range(5))  # 6 urls attempted (the cap), one was broken
 
 
 def test_fetch_photos_paces_requests_to_the_image_host():

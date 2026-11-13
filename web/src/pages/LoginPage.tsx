@@ -23,7 +23,10 @@ export function LoginPage() {
       await qc.invalidateQueries({ queryKey: ['me'] })
       nav('/')
     } catch (e) {
-      setErr(e instanceof ApiError && e.status === 429 ? 'محاولات كثيرة، حاول بعد دقيقة' : 'كلمة المرور غير صحيحة')
+      // only a real 401 means a wrong password; offline or a server error must not look like one
+      const wrong = e instanceof ApiError && e.status < 500
+      setErr(e instanceof ApiError && e.status === 429 ? 'محاولات كثيرة، حاول بعد دقيقة'
+        : wrong ? 'كلمة المرور غير صحيحة' : 'تعذّر الاتصال بالخادم، حاول مرة أخرى')
     } finally {
       setPending(false)
     }

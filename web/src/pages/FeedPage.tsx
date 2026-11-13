@@ -74,7 +74,8 @@ export function FeedPage() {
   useShortcuts({
     enabled: bp === 'desktop',
     onNext: () => step(1), onPrev: () => step(-1), onHelp: () => setHelpOpen(true),
-    onBookmark: current && (() => react(current.id, current.family_status === 'bookmarked' ? 'unreject' : 'bookmark')),
+    onBookmark: current && current.family_status !== 'visited'
+      ? () => react(current.id, current.family_status === 'bookmarked' ? 'unreject' : 'bookmark') : undefined,
     onReject: current && (() => rejectFlow.ask(current.id, current.title)),
   })
 

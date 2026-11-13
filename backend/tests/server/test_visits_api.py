@@ -241,21 +241,24 @@ def test_trips_list_filter_and_order(db, family):
     assert family.post("/api/visits/trips/999/precheck").status_code == 404
 
 
+JPEG_BYTES = b"\xff\xd8\xff\xe0jpegbytes"
+
+
 def test_photo_upload_is_private_and_served_behind_auth(db, family, app_client, settings_env, tmp_path):
     priv, pub = tmp_path / "private", tmp_path / "pub"
     settings_env(VISIT_PHOTOS_DIR=str(priv), PHOTOS_DIR=str(pub), SERVE_PHOTOS="true")
     ids = seed(db)
     sid = make_trip(family, ids[:1])["stops"][0]["id"]
-    r = family.post(f"/api/visits/stops/{sid}/photos", files={"file": ("a.jpg", b"\xff\xd8jpegbytes", "image/jpeg")})
+    r = family.post(f"/api/visits/stops/{sid}/photos", files={"file": ("a.jpg", JPEG_BYTES, "image/jpeg")})
     assert r.status_code == 204
     row = db.query(VisitPhoto).one()
     assert row.stop_id == sid and row.path.startswith(f"{sid}/") and row.path.endswith(".jpg")
-    assert (priv / row.path).read_bytes() == b"\xff\xd8jpegbytes"
+    assert (priv / row.path).read_bytes() == JPEG_BYTES
     assert not list(pub.rglob("*.jpg")) if pub.exists() else True  # never under the public photos dir
     urls = family.get(f"/api/visits/trips/{db.query(VisitTrip).one().id}").json()["stops"][0]["photos"]
     assert urls == [f"/api/visits/photos/{row.id}"] and not urls[0].startswith("/photos")
     got = family.get(urls[0])
-    assert got.status_code == 200 and got.content == b"\xff\xd8jpegbytes" and got.headers["content-type"] == "image/jpeg"
+    assert got.status_code == 200 and got.content == JPEG_BYTES and got.headers["content-type"] == "image/jpeg"
     app_client.cookies.clear()
     assert app_client.get(urls[0]).status_code == 401
     assert app_client.get(f"/photos/visits/{row.path}").status_code == 404  # not reachable through the public mount
@@ -286,3 +289,18 @@ def test_stop_source_url_is_first_source_or_null(db, family):
     db.query(ListingSource).filter_by(listing_id=ids[1]).delete(); db.commit()
     trip_id = db.query(VisitTrip).one().id
     assert {s["listing"]["id"]: s["source_url"] for s in family.get(f"/api/visits/trips/{trip_id}").json()["stops"]}[ids[1]] is None
+
+
+def test_photo_type_is_sniffed_from_the_bytes_not_trusted_from_the_client(db, family, settings_env, tmp_path):
+    """M20: Android pickers can send an empty content type; a mislabelled file must not be stored as an image."""
+    settings_env(VISIT_PHOTOS_DIR=str(tmp_path / "private"))
+    ids = seed(db)
+    sid = make_trip(family, ids[:1])["stops"][0]["id"]
+    url = f"/api/visits/stops/{sid}/photos"
+    samples = {"jpg": JPEG_BYTES, "png": b"\x89PNG\r\n\x1a\n" + b"0" * 8, "webp": b"RIFF\x10\x00\x00\x00WEBPVP8 ",
+               "heic": b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00"}
+    for ext, data in samples.items():
+        assert family.post(url, files={"file": ("x", data, "")}).status_code == 204, ext  # no content type at all
+    assert sorted(p.path.rsplit(".", 1)[1] for p in db.query(VisitPhoto)) == sorted(samples)
+    assert family.post(url, files={"file": ("a.jpg", b"<html>not an image</html>", "image/jpeg")}).status_code == 422
+    assert db.query(VisitPhoto).count() == 4

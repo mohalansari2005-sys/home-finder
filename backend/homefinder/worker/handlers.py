@@ -14,7 +14,7 @@ from homefinder.schemas import SearchQuery
 from homefinder.worker.enrich.commute import compute_commutes
 from homefinder.worker.enrich.pipeline import enrich_listing
 from homefinder.worker.ingest import ingest_raw
-from homefinder.worker.sources.aqar_transport import AppVersionOutdated
+from homefinder.worker.sources.aqar_transport import AppVersionOutdated, Blocked
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def handle_scrape_search(deps: WorkerDeps, payload: dict) -> dict:
             query = SearchQuery.from_hard_filters(prefs.get_or_create(s).hard_filters)
     else:
         query = SearchQuery(**payload.get("query", {}))
-    adapter = deps.adapters[source]()
+    adapter = deps.adapters[source]()  # a process-lifetime singleton: its pacer and session persist across jobs
     try:
         raws = list(adapter.search(query))
     except AppVersionOutdated as e:
@@ -47,10 +47,11 @@ def handle_scrape_search(deps: WorkerDeps, payload: dict) -> dict:
         with deps.session_factory() as s:
             adapters_state.pause(s, source, f"{source} app-version outdated")
         return {"skipped": "app_version_outdated"}
-    finally:
-        close = getattr(getattr(adapter, "_t", None), "close", None)
-        if close:
-            close()
+    except Blocked as e:  # every transport (curl_cffi, then Playwright) was refused: stop hammering the site
+        log.error("%s blocked: %s", source, e)
+        with deps.session_factory() as s:
+            adapters_state.pause(s, source, f"{source} blocked: {e}"[:200])
+        return {"skipped": "blocked"}
     report = adapter.health(raws)
     if not report.ok:
         with deps.session_factory() as s:
@@ -75,7 +76,9 @@ def handle_recompute_commutes(deps: WorkerDeps, payload: dict) -> dict:
         return {"skipped": "no google key"}
     n = 0
     with deps.session_factory() as s:
-        ids = list(s.scalars(select(Listing.id).where(Listing.lat.is_not(None), Listing.merged_into_id.is_(None))))
+        ids = list(s.scalars(select(Listing.id).where(
+            Listing.lat.is_not(None), Listing.merged_into_id.is_(None), Listing.status == "active",
+            Listing.family_status != "rejected")))  # removed/rejected listings are never shown: don't pay to route them
     for lid in ids:
         with deps.session_factory() as s:
             l = s.get(Listing, lid)
@@ -108,10 +111,11 @@ def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
             with deps.session_factory() as s:
                 adapters_state.pause(s, src, f"{src} app-version outdated")
             return {"skipped": "app_version_outdated"}
-        finally:
-            close = getattr(getattr(adapter, "_t", None), "close", None)
-            if close:
-                close()
+        except Blocked as e:
+            log.error("%s blocked: %s", src, e)
+            with deps.session_factory() as s:
+                adapters_state.pause(s, src, f"{src} blocked: {e}"[:200])
+            return {"skipped": "blocked"}
         if raw is not None:
             with deps.session_factory() as s:
                 res = ingest_raw(s, raw)
@@ -124,6 +128,27 @@ def handle_refresh_listing(deps: WorkerDeps, payload: dict) -> dict:
     with deps.session_factory() as s:
         s.get(Listing, lid).status = "removed"
     return {"removed": True}
+
+
+def handle_fetch_missing_photos(deps: WorkerDeps, payload: dict) -> dict:
+    """Catch-up for listings that became visible after their first enrichment (at most 50 per run)."""
+    from homefinder.worker.enrich.photos import fetch_photos
+    from homefinder.worker.scheduler import missing_photo_ids
+
+    if deps.photo_sink is None or deps.http is None:
+        return {"skipped": "no sink"}
+    with deps.session_factory() as s:
+        ids = missing_photo_ids(s)
+    done = photos = 0
+    for lid in ids:
+        with deps.session_factory() as s:
+            urls = next((u for u in s.scalars(select(ListingSource.photo_urls).where(
+                ListingSource.listing_id == lid).order_by(ListingSource.id)) if u), [])
+        photos += fetch_photos(deps.http, deps.photo_sink, lid, urls)
+        with deps.session_factory() as s:
+            s.get(Listing, lid).photos_fetched = True
+        done += 1
+    return {"listings": done, "photos": photos}
 
 
 def handle_learn(deps: WorkerDeps, payload: dict) -> dict:
@@ -146,7 +171,8 @@ HANDLERS: dict[str, Callable[[WorkerDeps, dict], dict]] = {
     "learn": handle_learn,
     "precheck_trip": handle_precheck_trip,
     "recompute_commutes": handle_recompute_commutes,
-    "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"]),
+    "fetch_missing_photos": handle_fetch_missing_photos,
+    "enrich_listing": lambda deps, p: enrich_listing(deps, p["listing_id"], p.get("attempt", 0)),
 }
 
 

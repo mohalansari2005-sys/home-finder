@@ -32,3 +32,17 @@ def test_photo_upload_rejects_path_tricks(db, app_client, worker_headers):
                         data={"listing_id": "../../etc", "position": 0, "phash": "", "source_url": ""},
                         files={"file": ("x", b"x", "image/webp")})
     assert r.status_code == 422
+
+
+def test_photo_upload_for_an_unknown_listing_is_404_and_writes_no_file(db, app_client, worker_headers, tmp_path):
+    """M19: no orphan file before the FK error."""
+    r = app_client.post("/worker/photos", headers=worker_headers, data={"listing_id": 9999, "position": 0},
+                        files={"file": ("0.webp", b"RIFFxxxxWEBP", "image/webp")})
+    assert r.status_code == 404 and not list(tmp_path.rglob("*.webp"))
+
+
+def test_photo_upload_over_10_mb_is_rejected_not_truncated(db, app_client, worker_headers, tmp_path):
+    l = Listing(); db.add(l); db.commit()
+    r = app_client.post("/worker/photos", headers=worker_headers, data={"listing_id": l.id, "position": 0},
+                        files={"file": ("0.webp", b"x" * (10 * 1024 * 1024 + 1), "image/webp")})
+    assert r.status_code == 413 and not list(tmp_path.rglob("*.webp")) and db.query(Photo).count() == 0

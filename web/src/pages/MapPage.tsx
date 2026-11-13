@@ -30,7 +30,7 @@ export function MapPage() {
   const nav = useNavigate()
   const p = points.data?.find((x) => x.id === sel)
   return (
-    <div className="relative h-dvh">
+    <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-dvh">
       <MapView points={points.data ?? []} places={places.data ?? []} selectedId={sel} onSelect={setSel} />
       {bp === 'phone' ? (
         <Drawer open={!!p} onOpenChange={(o) => !o && setSel(null)} modal={false}>

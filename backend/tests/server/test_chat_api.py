@@ -223,3 +223,65 @@ def test_chat_history_with_the_real_postgres_checkpointer(db, family, settings_e
     finally:
         graph.get_checkpointer().conn.close()
         graph.get_checkpointer.cache_clear()
+
+
+class StrictToolModel(ScriptedToolModel):
+    """Like OpenAI: refuses a history where an assistant tool call has no matching tool result."""
+    seen: list = []
+
+    def _check(self, messages):
+        from langchain_core.messages import AIMessage as AI, ToolMessage
+        answered = {m.tool_call_id for m in messages if isinstance(m, ToolMessage)}
+        for m in messages:
+            if isinstance(m, AI):
+                for tc in m.tool_calls:
+                    if tc["id"] not in answered:
+                        raise ValueError("400: assistant message with 'tool_calls' must be followed by tool messages")
+        self.seen.append(list(messages))
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        self._check(messages)
+        return super()._generate(messages, stop, run_manager, **kwargs)
+
+    def _stream(self, messages, stop=None, run_manager=None, **kwargs):
+        self._check(messages)
+        yield from super()._stream(messages, stop, run_manager, **kwargs)
+
+
+def test_next_turn_works_after_stop_left_a_dangling_tool_call(db, family, monkeypatch, settings_env):
+    """I2: «إيقاف» during a tool call checkpoints an AIMessage(tool_calls) with no ToolMessage.
+    The next message on that thread must still reach the model with a closed history."""
+    from langchain_core.messages import HumanMessage, ToolMessage
+    from homefinder.db import session_scope
+    from homefinder.server.agent.graph import build_agent
+    from homefinder.server.agent.tools import make_tools
+    from homefinder.server.routes import chat
+    from homefinder.models import ChatThread
+    settings_env(OPENAI_API_KEY="sk-test-not-real")
+    db.add(ChatThread(id="t-stop", title="x")); db.commit()
+    saver = InMemorySaver()
+    cfg = {"configurable": {"thread_id": "t-stop"}}
+    # turn 1: the route notices the disconnect on the event after the tool ran, before the next checkpoint
+    # is written; so consume until the tools update, then drop the stream (what a disconnect does)
+    first = StrictToolModel(script=[call("search_listings", id="call-1"), AIMessage(content="never")], seen=[])
+    stream = build_agent(first, make_tools(session_scope), saver).stream(
+        {"messages": [HumanMessage("وش عندك؟")]}, cfg, stream_mode=["messages", "updates"])
+    for mode, _data in stream:
+        if mode == "updates" and "tools" in _data:
+            break
+    stream.close()
+    msgs = saver.get_tuple(cfg).checkpoint["channel_values"]["messages"]  # as persisted, pending writes not applied
+    assert msgs[-1].tool_calls and not any(isinstance(m, ToolMessage) for m in msgs)  # the broken state
+    assert [m.content for m in msgs if isinstance(m, HumanMessage)] == ["وش عندك؟"]
+
+    # turn 2 through the real route code
+    second = StrictToolModel(script=[AIMessage(content="تمام، نكمل.")], seen=[])
+    monkeypatch.setattr(chat, "get_checkpointer", lambda: saver)
+    monkeypatch.setattr(chat, "make_chat_model", lambda: second)
+    ev = [json.loads(x[6:]) for x in chat._event_stream("كمّل", "t-stop", lambda: False) if x.startswith("data: ")]
+    assert not any(e["type"] == "error" for e in ev), ev
+    assert "".join(e["text"] for e in ev if e["type"] == "token") == "تمام، نكمل."
+    sent = second.seen[-1]
+    closing = [m for m in sent if isinstance(m, ToolMessage)]
+    assert [m.tool_call_id for m in closing] == ["call-1"] and "cancelled" in closing[0].content
+    assert isinstance(sent[-1], HumanMessage) and sent[-1].content == "كمّل"

@@ -1,17 +1,22 @@
 import json
 import logging
-import os
 from collections.abc import Callable
 from typing import Protocol
 
+from homefinder.config import get_settings
+
 log = logging.getLogger(__name__)
 
-# Sent by the live web client; Aqar rejects stale values. See docs/sources/aqar.md for how to refresh.
-AQAR_APP_VERSION = os.environ.get("AQAR_APP_VERSION", "1.0.3")
 GRAPHQL_URL = "https://sa.aqar.fm/graphql"
 HOME_URL = "https://sa.aqar.fm/"
-API_HEADERS = {"accept": "*/*", "content-type": "application/json", "origin": "https://sa.aqar.fm",
-               "referer": HOME_URL, "req-app": "web", "app-version": AQAR_APP_VERSION, "accept-language": "ar,en;q=0.9"}
+_BASE_HEADERS = {"accept": "*/*", "content-type": "application/json", "origin": "https://sa.aqar.fm",
+                 "referer": HOME_URL, "req-app": "web", "accept-language": "ar,en;q=0.9"}
+
+
+def api_headers() -> dict:
+    """Built per call: the app-version (Settings.aqar_app_version, read from .env) is what the live web client
+    sends and Aqar rejects stale values. See docs/sources/aqar.md for how to refresh it."""
+    return {**_BASE_HEADERS, "app-version": get_settings().aqar_app_version}
 
 
 class Blocked(Exception):
@@ -26,7 +31,7 @@ def check_graphql_errors(data: dict, who: str) -> None:
     for e in data.get("errors") or []:
         msg = str(e.get("message", ""))
         if "قديمة" in msg or "تحديث التطبيق" in msg:
-            raise AppVersionOutdated(f"{who}: aqar app-version outdated ({AQAR_APP_VERSION})")
+            raise AppVersionOutdated(f"{who}: aqar app-version outdated ({get_settings().aqar_app_version})")
 
 
 class Transport(Protocol):
@@ -44,7 +49,7 @@ class CurlCffiTransport:
         if not self._warmed:
             self._s.get(HOME_URL, timeout=30)
             self._warmed = True
-        r = self._s.post(GRAPHQL_URL, json=body, headers=API_HEADERS, timeout=30)
+        r = self._s.post(GRAPHQL_URL, json=body, headers=api_headers(), timeout=30)
         if r.status_code != 200 or "json" not in r.headers.get("content-type", ""):
             raise Blocked(f"curl_cffi: HTTP {r.status_code}")
         data = r.json()
@@ -78,7 +83,7 @@ class PlaywrightTransport:
 
     def post_graphql(self, body: dict) -> dict:
         self._ensure()
-        headers = {k: v for k, v in API_HEADERS.items() if k in ("content-type", "req-app", "app-version")}
+        headers = {k: v for k, v in api_headers().items() if k in ("content-type", "req-app", "app-version")}
         res = self._page.evaluate(_FETCH_JS, [GRAPHQL_URL, body, headers])
         if res["status"] != 200 or "json" not in res["ct"]:
             raise Blocked(f"playwright: HTTP {res['status']}")
@@ -117,6 +122,7 @@ class FallbackTransport:
                 self._t.close()
                 self._t = None
                 if self._i + 1 >= len(self._factories):
+                    self._i = 0  # everything blocked: the next run starts with the first transport again
                     raise
                 self._i += 1
 

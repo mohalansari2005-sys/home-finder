@@ -146,3 +146,21 @@ def test_not_removed_when_the_other_source_is_paused(db):
     out = dispatch(deps(aqar=FakeAdapter(None), haraj=FakeAdapter(None)), "refresh_listing", {"listing_id": l.id})
     db.expire_all()
     assert out == {"skipped": "paused"} and db.get(Listing, l.id).status == "active"
+
+
+def test_recompute_commutes_skips_removed_and_rejected_listings(db):
+    from homefinder.models import Place
+    from geoalchemy2.elements import WKTElement
+    db.add(Place(kind="work", name="w", lat=24.7, lng=46.7, geom=WKTElement("POINT(46.7 24.7)", srid=4326))); db.commit()
+    live = mk(db, sid="a", lat=24.8, lng=46.6)
+    mk(db, sid="b", lat=24.8, lng=46.61, status="removed")
+    mk(db, sid="c", lat=24.8, lng=46.62, family_status="rejected")
+    mk(db, sid="d", lat=24.8, lng=46.63, family_status="bookmarked")
+    asked = []
+
+    class G:
+        def drive_minutes(self, origin, dests, dep): asked.append(origin); return [9] * len(dests)
+
+    d = deps(); d.google = G()
+    out = dispatch(d, "recompute_commutes", {})
+    assert out == {"listings": 2} and len(asked) == 2  # the live one and the bookmarked one only

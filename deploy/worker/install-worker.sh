@@ -8,7 +8,8 @@ command -v tailscale >/dev/null || [ -d /Applications/Tailscale.app ] || { echo 
 [ -f "$BACKEND/.env" ] || { echo "Create $BACKEND/.env (DATABASE_URL to server Tailscale IP, SERVER_URL, WORKER_TOKEN, API keys)"; exit 1; }
 cd "$BACKEND"
 [ -d .venv ] || python3.12 -m venv .venv
-.venv/bin/pip install -q -e ".[worker]"
+.venv/bin/pip install -q -r requirements-worker.lock  # pinned; regenerate with scripts/lock-backend.sh
+.venv/bin/pip install -q --no-deps -e .
 .venv/bin/playwright install chromium
 mkdir -p "$LOGS" "$(dirname "$PLIST")"
 sed -e "s#__BACKEND__#$BACKEND#g" -e "s#__LOGS__#$LOGS#g" "$ROOT/deploy/worker/com.homefinder.worker.plist.template" > "$PLIST"

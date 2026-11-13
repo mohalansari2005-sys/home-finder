@@ -26,8 +26,13 @@ mkdir -p /opt/homefinder /var/backups/homefinder
 
 certbot certonly --standalone --non-interactive --agree-tos -m "$EMAIL" -d "$DOMAIN"
 
+# boot order, private backups dir, weekly photo prune, certbot renewal hooks. After certbot certonly on purpose:
+# the renewal hooks stop nginx, which does not exist yet on a fresh server.
+bash /opt/homefinder/deploy/scripts/server-hardening.sh
+
+# certificate renewal: apt's certbot.timer renews, and the hooks that stop/start nginx (port 80 for the standalone
+# challenge) are installed by server-hardening.sh in /etc/letsencrypt/renewal-hooks
 cat > /etc/cron.d/homefinder <<CRON
 15 3 * * * root /opt/homefinder/deploy/scripts/backup.sh >> /var/log/homefinder-backup.log 2>&1
-0 4 * * 1 root certbot renew --quiet --pre-hook "docker compose -f /opt/homefinder/deploy/docker-compose.yml --env-file /opt/homefinder/.env stop nginx" --post-hook "docker compose -f /opt/homefinder/deploy/docker-compose.yml --env-file /opt/homefinder/.env start nginx"
 CRON
 echo "Now: create /opt/homefinder/.env from .env.example, then run deploy.sh from the Mac."

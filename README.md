@@ -86,7 +86,7 @@ Conversations are saved with LangGraph's Postgres checkpointer, so a thread can 
 
 **Why this split?** Scoring, filters and learning are deterministic, testable and free, so the app keeps working with no API key at all. The LLM is used only where language is the actual problem: messy ad text and free-form requests.
 
-**Guardrails.** Every OpenAI call is metered against a monthly budget (`OPENAI_MONTHLY_CAP_USD`). When the budget runs out, the assistant says so and the rest of the app carries on. If the Mac worker is offline, the assistant can still run a small Aqar search from the server.
+**Guardrails.** Every OpenAI call is metered against a monthly budget (`OPENAI_MONTHLY_CAP_USD`). When the budget runs out, the assistant says so and the rest of the app carries on. If the Mac worker is offline, the assistant can still run a small Aqar search from the server. Google usage is capped the same way (`GOOGLE_MONTHLY_CAP_USD`). The cap counts Google's list price and ignores their free monthly allowance, so real spend is lower than the meter. Background enrichment stops at 80% of the cap, which keeps the last 20% for planning visit trips.
 
 ## Architecture
 

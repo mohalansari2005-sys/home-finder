@@ -38,6 +38,7 @@ export function useSavePreferences() {
       qc.setQueryData(['preferences'], out)
       qc.invalidateQueries({ queryKey: ['preference-changes'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['map'] })
       qc.invalidateQueries({ queryKey: ['status'] })
       // the server rescores in the background; refetch shortly so the feed order catches up
       setTimeout(() => qc.invalidateQueries({ queryKey: ['feed'] }), 2000)
@@ -82,6 +83,7 @@ export function useReact() {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['map'] })
       qc.invalidateQueries({ queryKey: ['listing'] })
+      qc.invalidateQueries({ queryKey: ['suggestions'] }) // a reject can create or clear a filter suggestion
     },
   })
 }
@@ -157,6 +159,8 @@ function useTripWrite<V>(id: number, fn: (v: V) => Promise<Trip | void>, invalid
       if (out && !invalidateOnly) qc.setQueryData(['trip', id], out)
       else qc.invalidateQueries({ queryKey: ['trip', id] })
       qc.invalidateQueries({ queryKey: ['trips'] })
+      // a stop marked visited changes the listing's family status, the feed and the visit suggestions
+      for (const k of ['feed', 'listing', 'visit-groups']) qc.invalidateQueries({ queryKey: [k] })
     },
   })
 }

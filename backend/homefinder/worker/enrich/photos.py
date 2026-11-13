@@ -7,8 +7,8 @@ from typing import Protocol
 import httpx
 
 log = logging.getLogger(__name__)
-MAX_PHOTOS = 10
-MAX_SIDE = 1600
+MAX_PHOTOS = 6   # disk is the scarce resource on the 40 GB VPS (see docs/DEPLOY.md, backups)
+MAX_SIDE = 1280
 PHOTO_DELAY_S = 0.5  # be polite to the listing sites' image hosts
 
 

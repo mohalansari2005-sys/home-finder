@@ -10,6 +10,9 @@ const df = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'l
 export const formatPrice = (n: number | null | undefined) => (n == null ? 'السعر غير مذكور' : `${nf.format(n)} ر.س`)
 export const formatMinutes = (m: number | null | undefined) => (m == null ? '—' : `${nf.format(m)} د`)
 export const formatArea = (m: number | null | undefined) => (m == null ? '—' : `${nf.format(m)} م²`)
+/** Fixed decimals with Latin digits, e.g. 7.4. */
+export const formatDecimal = (n: number | null | undefined, digits = 1) =>
+  n == null ? '—' : new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
 export const formatNumber = (n: number | null | undefined) => (n == null ? '—' : nf.format(n))
 
 /** Date-only "YYYY-MM-DD" -> Date pinned to 12:00 UTC (never local midnight). Invalid input -> null. */

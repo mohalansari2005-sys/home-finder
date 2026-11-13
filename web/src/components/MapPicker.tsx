@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AdvancedMarker, APIProvider, Map } from '@vis.gl/react-google-maps'
 import { Map as MapIcon } from 'lucide-react'
 import { parseLatLng } from '../lib/factors'
+import { formatDecimal } from '../lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +14,7 @@ const RIYADH = { lat: 24.7136, lng: 46.6753 }
 export interface LatLng { lat: number; lng: number }
 interface Props { value: LatLng | null; onChange: (v: LatLng | null) => void; id: string }
 
-const fmt = (v: LatLng | null) => (v ? `${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}` : '')
+const fmt = (v: LatLng | null) => (v ? `${formatDecimal(v.lat, 5)}, ${formatDecimal(v.lng, 5)}` : '')
 
 /** Tap the map to drop a marker; the text field (coordinates or a Google Maps link) always works, with or without a Maps key. */
 export function MapPicker({ value, onChange, id }: Props) {

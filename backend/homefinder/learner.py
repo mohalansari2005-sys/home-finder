@@ -86,7 +86,7 @@ def _dataset(s: Session):
 
 
 def run_learn(s: Session) -> dict:
-    p = prefs_mod.get_or_create(s)
+    p = prefs_mod.get_or_create(s, lock=True)
     X, y, sw, factors, reacts = _dataset(s)
     if len(y) == 0 or min((y == 1).sum(), (y == 0).sum()) < MIN_EACH_CLASS:
         if reacts:  # remember the attempt so the server doesn't re-trigger on every later reaction

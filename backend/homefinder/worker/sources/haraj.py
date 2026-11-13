@@ -26,6 +26,9 @@ _FIELD_MAP = {"id": "id", "title": "title", "bodyTEXT": "bodyTEXT", "city": "cit
 _IDENTITY_MAP = {k: k for k in _FIELD_MAP} | {"geo": "geo", "district": "district"}
 
 _DISTRICT_RE = re.compile(r"حي\s+([؀-ۿ]+(?:\s[؀-ۿ]+)?)")
+# a word that follows the district name in a title but is not part of it («حي القيروان للبيع»)
+_NOT_DISTRICT = {normalize_ar(w) for w in ("للبيع", "للايجار", "شمال", "جنوب", "شرق", "غرب", "الرياض", "في", "بالرياض", "بسعر", "بحي", "قريبة", "قريب",
+                 "فيلا", "شقة", "دور", "ارض", "مساحة", "موقع", "عمر", "جديدة", "جديد", "راقي", "ممتازة", "مميزة", "للتقسيط")}
 _RENT_RE = re.compile(r"ايجار")  # after normalize_ar: إيجار / للإيجار / الايجار
 _WANTED_RE = re.compile(r"^\s*(مطلوب|ابحث|ابي|ابغي|ابغى|نبي|ادور)(\s|$)")
 _GEOHASH = "0123456789bcdefghjkmnpqrstuvwxyz"
@@ -67,7 +70,10 @@ def _district(api_value, title: str, body: str) -> str | None:
     for text in (title, body):
         m = _DISTRICT_RE.search(text)
         if m:
-            return normalize_ar(m.group(1))
+            words = normalize_ar(m.group(1)).split(" ")
+            if len(words) > 1 and words[1] in _NOT_DISTRICT:
+                words = words[:1]
+            return " ".join(words)
     return None
 
 
@@ -127,6 +133,11 @@ class HarajAdapter:
         self._t = transport
         self._pacer = pacer or Pacer()
 
+    def close(self) -> None:
+        close = getattr(self._t, "close", None)
+        if close:
+            close()
+
     def _tags(self, ptype: str, q: SearchQuery) -> list[str]:
         base = HARAJ_TAG_BY_TYPE[ptype]
         if not q.districts:
@@ -140,9 +151,11 @@ class HarajAdapter:
             for tag in self._tags(ptype, q):
                 for page in range(q.max_pages):
                     self._pacer.wait()
-                    posts = extract_posts(self._t.search(tag, q.city, page))
+                    resp = self._t.search(tag, q.city, page)
+                    posts = extract_posts(resp)
                     if not posts:
                         break
+                    last_page = ((((resp or {}).get("data") or {}).get("posts") or {}).get("pageInfo") or {}).get("hasNextPage") is False
                     for p in posts:
                         r = parse_post(p)
                         if r is None or r.source_id in seen:
@@ -156,6 +169,8 @@ class HarajAdapter:
                             continue
                         seen.add(r.source_id)
                         yield r
+                    if last_page:
+                        break
 
     def fetch(self, source_id: str) -> RawListing | None:
         self._pacer.wait()

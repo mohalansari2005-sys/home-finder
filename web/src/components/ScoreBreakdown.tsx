@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, Minus, Plus } from 'lucide-react'
 import type { ScoreBreakdown as Breakdown } from '../api/types'
 import { FACTOR_AR, type Factor } from '../lib/factors'
-import { formatNumber } from '../lib/format'
+import { formatDecimal, formatNumber } from '../lib/format'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Progress } from '@/components/ui/progress'
@@ -35,6 +35,9 @@ export function ScoreBreakdown({ breakdown }: { breakdown: Breakdown | null }) {
   return (
     <section aria-labelledby="why-score" className="space-y-3 rounded-3xl bg-card p-4 ring-1 ring-foreground/10">
       <h2 id="why-score" className="text-[17px] font-semibold">لماذا <bdi>{formatNumber(Math.round(breakdown.total))}</bdi>؟</h2>
+      {breakdown.coverage != null && breakdown.coverage < 0.5 && (
+        <p className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">تقييم تقريبي: بيانات كثيرة غير مذكورة</p>
+      )}
       <Collapsible open={open} onOpenChange={setOpen} className="space-y-3">
         <ul className="space-y-2">
           {pluses.map((c) => <Reason key={c.factor} factor={c.factor} positive />)}
@@ -53,7 +56,7 @@ export function ScoreBreakdown({ breakdown }: { breakdown: Breakdown | null }) {
                 <span>{label(c.factor)}</span>
                 <Progress value={Math.round(c.value * 100)} aria-label={`${label(c.factor)}: ${Math.round(c.value * 100)}%`}
                           className={cn('h-2', c.delta < 0 && '[&>div]:bg-destructive')} />
-                <bdi className="text-end text-muted-foreground">{c.delta > 0 ? '+' : ''}{c.delta.toFixed(1)}</bdi>
+                <bdi className="text-end text-muted-foreground">{c.delta > 0 ? '+' : ''}{formatDecimal(c.delta)}</bdi>
               </li>
             ))}
           </ul>

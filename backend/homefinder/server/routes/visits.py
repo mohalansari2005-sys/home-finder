@@ -26,6 +26,22 @@ MAX_PHOTO_BYTES = 8 * 1024 * 1024
 IMAGE_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
              "image/heif": "heif", "image/gif": "gif"}  # no svg: it can carry script and is served from our origin
 EXT_TYPE = {v: k for k, v in IMAGE_EXT.items()}
+HEIF_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1"}
+
+
+def _sniff_ext(data: bytes) -> str | None:
+    """Image type from the file's magic bytes (the client's content_type is empty on some Android pickers)."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    if data[:3] == b"GIF":
+        return "gif"
+    if data[4:8] == b"ftyp" and data[8:12] in HEIF_BRANDS:
+        return "heic"
+    return None
 
 
 @lru_cache
@@ -160,12 +176,12 @@ def _photo_root() -> Path:
 def upload_photo(stop_id: int, file: UploadFile = File(...), s: Session = Depends(get_db)):
     if s.get(VisitStop, stop_id) is None:
         raise HTTPException(404, "stop not found")
-    ext = IMAGE_EXT.get((file.content_type or "").lower())
-    if ext is None:
-        raise HTTPException(422, "الملف يجب أن يكون صورة (JPEG أو PNG أو WebP أو HEIC)")
     data = file.file.read(MAX_PHOTO_BYTES + 1)
     if len(data) > MAX_PHOTO_BYTES:
         raise HTTPException(413, "حجم الصورة أكبر من 8 ميغابايت")
+    ext = _sniff_ext(data)
+    if ext is None:
+        raise HTTPException(422, "الملف يجب أن يكون صورة (JPEG أو PNG أو WebP أو HEIC)")
     rel = f"{stop_id}/{uuid.uuid4().hex}.{ext}"
     dest = _photo_root() / rel
     dest.parent.mkdir(parents=True, exist_ok=True)

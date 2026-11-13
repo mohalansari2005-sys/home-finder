@@ -9,7 +9,7 @@ Findings from the live probe on 2026-11-13 (single run from the Mac, paced 2-3 s
 ## app-version header (important)
 Aqar rejects stale clients with HTTP 200 and `{"errors":[{"message":"عذراً هذه النسخة من التطبيق قديمة، يرجى تحديث التطبيق","error":"INVALID_INPUT","code":400}]}`.
 The transport maps that (message contains `قديمة` or `تحديث التطبيق`) to `AppVersionOutdated`, which pauses the adapter with the reason "aqar app-version outdated".
-Current value: `1.0.3` (constant `AQAR_APP_VERSION` in `aqar_transport.py`, overridable with the env var `AQAR_APP_VERSION`).
+Current value: `1.0.3` (`Settings.aqar_app_version`, set `AQAR_APP_VERSION` in `backend/.env` (Mac worker) and the server `.env`; restart the worker after changing it).
 
 How to find the current value when Aqar bumps it:
 1. Fetch `https://sa.aqar.fm/` and collect the `https://cdn.aqar.fm/website/next/_next/static/chunks/*.js` URLs.
