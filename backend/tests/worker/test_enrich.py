@@ -60,6 +60,29 @@ def test_enrich_geocodes_district_then_commutes(db):
     assert l.geo_precision == "district" and l.lat == 24.8 and l.commutes == {"work": 15}
 
 
+def test_enrich_skips_drive_times_for_listings_outside_the_filters(db):
+    from homefinder import prefs
+    from tests.worker.test_commute import _place
+    _place(db, "work", 24.7, 46.7)
+    prefs.get_or_create(db).hard_filters = {"price_max": 2_000_000}; db.commit()
+    l = Listing(price=5_000_000, lat=24.8, lng=46.6); db.add(l); db.commit()
+    g = FakeMaps()
+    out = enrich_listing(_deps(maps=g), l.id)
+    db.expire_all(); l = db.get(Listing, l.id)
+    assert g.calls == 0 and l.commutes == {} and l.passes_filters is False and out["commutes"] == 0
+
+
+def test_enrich_routes_a_kept_listing_even_outside_the_filters(db):
+    from homefinder import prefs
+    from tests.worker.test_commute import _place
+    _place(db, "work", 24.7, 46.7)
+    prefs.get_or_create(db).hard_filters = {"price_max": 2_000_000}; db.commit()
+    l = Listing(price=5_000_000, lat=24.8, lng=46.6, family_status="bookmarked"); db.add(l); db.commit()
+    enrich_listing(_deps(maps=FakeMaps()), l.id)
+    db.expire_all()
+    assert db.get(Listing, l.id).commutes == {"work": 15}
+
+
 def test_enrich_budget_exceeded_keeps_partial_and_requeues(db):
     from homefinder.models import Job
     l = Listing(description="فيلا"); db.add(l); db.commit()

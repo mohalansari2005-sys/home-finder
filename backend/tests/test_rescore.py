@@ -71,3 +71,23 @@ def test_preference_writers_take_a_row_lock(db):
         event.remove(get_engine(), "before_cursor_execute", grab)
     locks = [x for x in seen if "FROM preferences" in x and "FOR UPDATE" in x]
     assert len(locks) >= 2
+
+
+def test_rescore_all_queues_drive_times_for_newly_visible_listings(db):
+    from homefinder.models import Job
+    prefs.get_or_create(db).hard_filters = {"price_max": 2_000_000}; db.commit()
+    l = Listing(price=3_000_000, lat=24.8, lng=46.6); db.add(l); db.commit()
+    rescore_all(db); db.commit()
+    assert db.query(Job).filter(Job.type == "recompute_commutes").count() == 0  # still outside the filters
+    prefs.get_or_create(db).hard_filters = {"price_max": 4_000_000}; db.commit()
+    rescore_all(db); rescore_all(db); db.commit()
+    jobs = db.query(Job).filter(Job.type == "recompute_commutes").all()
+    assert len(jobs) == 1 and jobs[0].payload == {"missing_only": True}  # deduped across rescores
+
+
+def test_cli_set_filters_rescores(db):
+    from homefinder.cli import main
+    l = Listing(price=3_000_000); db.add(l); db.commit()
+    main(["set-filters", "--json", '{"price_max": 2000000}'])
+    db.expire_all()
+    assert db.get(Listing, l.id).passes_filters is False

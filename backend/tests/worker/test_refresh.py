@@ -155,7 +155,8 @@ def test_recompute_commutes_skips_removed_and_rejected_listings(db):
     live = mk(db, sid="a", lat=24.8, lng=46.6)
     mk(db, sid="b", lat=24.8, lng=46.61, status="removed")
     mk(db, sid="c", lat=24.8, lng=46.62, family_status="rejected")
-    mk(db, sid="d", lat=24.8, lng=46.63, family_status="bookmarked")
+    mk(db, sid="d", lat=24.8, lng=46.63, family_status="bookmarked", passes_filters=False)
+    mk(db, sid="e", lat=24.8, lng=46.64, passes_filters=False)  # outside the filters: never seen, never routed
     asked = []
 
     class G:
@@ -164,3 +165,20 @@ def test_recompute_commutes_skips_removed_and_rejected_listings(db):
     d = deps(); d.maps = G()
     out = dispatch(d, "recompute_commutes", {})
     assert out == {"listings": 2} and len(asked) == 2  # the live one and the bookmarked one only
+
+
+def test_recompute_commutes_missing_only_routes_just_the_unrouted(db):
+    from homefinder.models import Place
+    from geoalchemy2.elements import WKTElement
+    db.add(Place(kind="work", name="w", lat=24.7, lng=46.7, geom=WKTElement("POINT(46.7 24.7)", srid=4326))); db.commit()
+    mk(db, sid="a", lat=24.8, lng=46.6, commutes={"work": 20})
+    new = mk(db, sid="b", lat=24.8, lng=46.61)
+    asked = []
+
+    class G:
+        def drive_minutes(self, origin, dests, dep): asked.append(origin); return [9] * len(dests)
+
+    d = deps(); d.maps = G()
+    assert dispatch(d, "recompute_commutes", {"missing_only": True}) == {"listings": 1} and len(asked) == 1
+    db.expire_all()
+    assert db.get(Listing, new.id).commutes == {"work": 9}
