@@ -135,6 +135,32 @@ def parse_price_from_text(*texts: str | None) -> int | None:
     return None
 
 
+# --- area ---
+AREA_RANGE = (50, 20_000)  # m2
+_AREA_KEY = re.compile(
+    rf"(?<![{_AR}])[بلو]?(?:ال)?مساحه(?:\s+(?:ال)?(?P<k>عقار|ارض|بناء|مبني))?(?![{_AR}])[^\d]{{0,15}}?(?P<n>{_NUM})")
+_NOT_AREA_AFTER = re.compile(rf"\s*(?:{_THOUSAND}|{_MILLION}|ريال)")
+_AREA_FIELD = {"بناء": "built_area_m2", "مبني": "built_area_m2"}  # عقار, ارض and a bare المساحة mean the plot
+
+
+def parse_areas_from_text(*texts: str | None) -> dict[str, float]:
+    """{'land_area_m2'?, 'built_area_m2'?} from 'مساحة العقار', 'المساحة', 'مساحة الأرض' (land) and 'مساحة البناء' (built).
+
+    Haraj's licence block states one area for the plot, so the unqualified wordings are land. Only values from
+    50 to 20,000 m2 are kept. Texts are tried in order; the first valid value per field wins."""
+    out: dict[str, float] = {}
+    for raw in texts:
+        if not raw:
+            continue
+        t = _normalize(raw)
+        for m in _AREA_KEY.finditer(t):
+            n = _to_number(m.group("n"))
+            if n is None or _NOT_AREA_AFTER.match(t, m.end()) or not AREA_RANGE[0] <= n <= AREA_RANGE[1]:
+                continue
+            out.setdefault(_AREA_FIELD.get(m.group("k"), "land_area_m2"), int(n) if n == int(n) else n)
+    return out
+
+
 # --- location ---
 
 SAUDI = (16, 33, 34, 56)  # lat min/max, lng min/max

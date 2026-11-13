@@ -87,21 +87,23 @@ def _merge_outcome(db, haraj_body):
     lat, lng = raw.fields.lat, raw.fields.lng
     older = ingest_raw(db, aqar_twin(lat, lng)).listing_id
     newer = ingest_raw(db, raw).listing_id
-    # Areas on Haraj come from the LLM extraction step; simulate its result here.
-    l = db.get(Listing, newer)
-    l.built_area_m2, l.land_area_m2 = 405, 300
     db.commit()
     return older, newer, dedupe_and_merge(db, newer)
 
 
-def test_haraj_post_with_text_price_merges_with_its_aqar_duplicate(db):
+def test_haraj_post_with_text_price_and_area_merges_with_its_aqar_duplicate(db):
     assert decode_geohash("thqcnq6zj") is not None
-    older, newer, merged = _merge_outcome(db, "فيلا دورين\nالسعر: ١,٨٥٠,٠٠٠ ريال")
+    older, newer, merged = _merge_outcome(db, "فيلا دورين\nمساحة الأرض: ٣٠٠ م٢\nالسعر: ١,٨٥٠,٠٠٠ ريال")
     assert merged == older
     db.expire_all()
     assert db.get(Listing, newer).merged_into_id == older
 
 
 def test_without_a_text_price_dedupe_cannot_match(db):
-    older, newer, merged = _merge_outcome(db, "فيلا دورين للتواصل")
+    older, newer, merged = _merge_outcome(db, "فيلا دورين\nمساحة الأرض: ٣٠٠ م٢")
+    assert merged is None
+
+
+def test_without_a_text_area_dedupe_cannot_match(db):
+    older, newer, merged = _merge_outcome(db, "فيلا دورين\nالسعر: ١,٨٥٠,٠٠٠ ريال")
     assert merged is None
