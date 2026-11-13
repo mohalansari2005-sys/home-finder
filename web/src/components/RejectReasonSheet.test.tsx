@@ -6,7 +6,7 @@ import { RejectReasonSheet } from './RejectReasonSheet'
 it('submits chosen reason and note', async () => {
   const onSubmit = vi.fn()
   render(<RejectReasonSheet open listingTitle="فيلا" onSubmit={onSubmit} onCancel={() => {}} />)
-  await userEvent.click(screen.getByRole('button', { name: 'قديم' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'قديم' }))
   await userEvent.type(screen.getByLabelText('ملاحظة (اختياري)'), 'المطبخ صغير')
   await userEvent.click(screen.getByRole('button', { name: 'استبعاد' }))
   expect(onSubmit).toHaveBeenCalledWith({ reason_code: 'too_old', note: 'المطبخ صغير' })
@@ -21,13 +21,13 @@ it('skip submits without reason; escape cancels', async () => {
   expect(onCancel).toHaveBeenCalled()
 })
 
-it('is a modal dialog; choosing a reason twice deselects it', async () => {
+it('is a modal dialog; clicking the chosen reason again deselects it', async () => {
   const onSubmit = vi.fn()
   render(<RejectReasonSheet open listingTitle="فيلا" onSubmit={onSubmit} onCancel={() => {}} />)
   expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
-  const chip = screen.getByRole('button', { name: 'بعيد' })
+  const chip = screen.getByRole('radio', { name: 'بعيد' })
   await userEvent.click(chip)
-  expect(chip).toHaveAttribute('aria-pressed', 'true')
+  expect(chip).toBeChecked()
   await userEvent.click(chip)
   await userEvent.click(screen.getByRole('button', { name: 'استبعاد' }))
   expect(onSubmit).toHaveBeenCalledWith({})

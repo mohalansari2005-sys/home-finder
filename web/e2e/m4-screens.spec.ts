@@ -13,7 +13,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('article').first().waitFor()
     await page.screenshot({ path: `${dir}/m4-${n}-feed-banner.png` })
     await page.getByRole('article').first().getByRole('button', { name: 'استبعاد' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'بعيد' }).click()
+    await page.getByRole('dialog').getByRole('radio', { name: 'بعيد' }).click()
     await page.waitForTimeout(500)
     await page.screenshot({ path: `${dir}/m4-${n}-reject-sheet.png` })
     await page.keyboard.press('Escape')

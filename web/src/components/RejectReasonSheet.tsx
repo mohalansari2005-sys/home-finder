@@ -21,10 +21,9 @@ function Body({ onSubmit }: Pick<Props, 'onSubmit'>) {
   }
   return (
     <div className="space-y-4 p-4 pt-2 md:p-0">
-      {/* "multiple" renders plain pressed-state buttons; the handler keeps at most one chip on. */}
-      <ToggleGroup type="multiple" aria-label="سبب الاستبعاد" spacing={2} className="w-full flex-wrap"
-                   value={reason ? [reason] : []}
-                   onValueChange={(v) => setReason(v.find((x) => x !== reason))}>
+      {/* single = radio semantics; Radix sets value to "" when the selected chip is clicked again, which deselects */}
+      <ToggleGroup type="single" aria-label="سبب الاستبعاد" spacing={2} className="w-full flex-wrap"
+                   value={reason ?? ''} onValueChange={(v) => setReason(v || undefined)}>
         {REJECT_REASONS.map((r) => (
           <ToggleGroupItem key={r} value={r} variant="outline"
                            className="h-11 rounded-full px-4 text-base data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">

@@ -9,7 +9,7 @@ test('reject opens the reason sheet; submit removes the card and offers undo', a
   await card2(page).getByRole('button', { name: 'استبعاد' }).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()
-  await sheet.getByRole('button', { name: 'الشارع ضيق' }).click()
+  await sheet.getByRole('radio', { name: 'الشارع ضيق' }).click()
   await sheet.getByLabel('ملاحظة (اختياري)').fill('الشارع ضيق جدا')
   await sheet.getByRole('button', { name: 'استبعاد' }).click()
   await expect(card2(page)).toHaveCount(0)
