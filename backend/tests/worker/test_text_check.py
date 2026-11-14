@@ -55,3 +55,22 @@ def test_reingest_keeps_a_townhouse_from_the_text(db):
     db.get(Listing, r.listing_id).property_type = "townhouse"; db.commit()
     ingest_raw(db, raw(price=1_400_000)); db.commit()
     assert db.get(Listing, r.listing_id).property_type == "townhouse"
+
+
+def test_check_text_cli_keeps_results_when_one_call_fails(db, monkeypatch):
+    from homefinder import cli
+    from homefinder.integrations import llm as llm_mod
+    ok = Listing(title="فيلا", description="فيلا في القيروان", district="النرجس", property_type="villa", score=90)
+    bad = Listing(title="فيلا", description="فيلا", district="النرجس", property_type="villa", score=80)
+    db.add_all([ok, bad]); db.commit()
+
+    class Flaky(FakeLLM):
+        def extract_json(self, *, system, user, schema, name):
+            if len(self.calls) == 1:
+                self.calls.append(schema); raise TimeoutError("openai timeout")
+            return super().extract_json(system=system, user=user, schema=schema, name=name)
+    monkeypatch.setattr(llm_mod, "make_llm", lambda: Flaky({"district": "القيروان"}))
+    cli.main(["check-text"])
+    db.expire_all()
+    assert db.get(Listing, ok.id).text_conflicts["district"]["text"] == "القيروان"
+    assert db.get(Listing, bad.id).text_conflicts is None  # left for the next run

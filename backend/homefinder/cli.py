@@ -13,6 +13,7 @@ from homefinder.db import session_scope
 from homefinder.models import Listing, Place
 from homefinder.photos_prune import prune_photos
 from homefinder.rescore import rescore_all
+from homefinder.usage import BudgetExceeded
 
 KKIA = ("مطار الملك خالد الدولي", 24.9576, 46.6988)
 
@@ -33,17 +34,28 @@ def _check_text(limit: int) -> None:
     if llm is None:
         print("OPENAI_API_KEY is not set", file=sys.stderr)
         raise SystemExit(1)
+    checked = found = failed = 0
     with session_scope() as s:
         rows = list(s.scalars(select(Listing).where(Listing.text_conflicts.is_(None), Listing.merged_into_id.is_(None),
                                                     Listing.status == "active")
                               .order_by(Listing.passes_filters.desc(), Listing.score.desc().nulls_last()).limit(limit)))
-        found = 0
         for l in rows:
-            l.text_conflicts = check_text(llm, l)
+            try:
+                l.text_conflicts = check_text(llm, l)
+            except BudgetExceeded as e:
+                print(f"stopping: {e}", file=sys.stderr)
+                break
+            except Exception as e:  # noqa: BLE001 — leave it unchecked for the next run
+                print(f"listing {l.id}: {e}", file=sys.stderr)
+                failed += 1
+                continue
+            checked += 1
             found += bool(l.text_conflicts)
-        s.flush()
+            if checked % 20 == 0:
+                s.commit()  # keep paid-for results if a later call fails hard
+        s.commit()
         rescore_all(s)  # a townhouse may now fail the property type filter
-        print(f"checked {len(rows)} listings, {found} with conflicts")
+    print(f"checked {checked} listings, {found} with conflicts, {failed} failed")
 
 
 def main(argv=None) -> None:

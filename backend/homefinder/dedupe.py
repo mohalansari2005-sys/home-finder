@@ -12,6 +12,12 @@ FILLABLE = ["title", "description", "district", "price", "bedrooms", "bathrooms"
             "land_area_m2", "building_age_years", "street_width_m", "facing", "street_count", "deed_type",
             "has_maid_room", "has_driver_room", "has_yard", "has_elevator"]
 STATUS_RANK = {"visited": 4, "bookmarked": 3, "rejected": 2, "seen": 1, "new": 0}
+# sources label townhouses as villas; only the ad text check tells them apart, and one post's text may not say it
+SAME_TYPE = {"townhouse": "villa"}
+
+
+def _type(t: str | None) -> str | None:
+    return SAME_TYPE.get(t, t)
 
 
 def _close(a, b, tol) -> bool | None:
@@ -35,7 +41,7 @@ def is_duplicate(a: Listing, b: Listing, a_hashes: list[str], b_hashes: list[str
         return False
     if a_hashes and b_hashes:
         return _hash_match(a_hashes, b_hashes)
-    return bool(a.property_type and a.property_type == b.property_type)
+    return bool(a.property_type and _type(a.property_type) == _type(b.property_type))
 
 
 def _hashes(s: Session, lid: int) -> list[str]:
@@ -64,6 +70,10 @@ def merge(s: Session, keep: Listing, dup: Listing) -> None:
     for f in FILLABLE:
         if getattr(keep, f) is None and getattr(dup, f) is not None:
             setattr(keep, f, getattr(dup, f))
+    if dup.property_type == "townhouse":  # either post's text saying townhouse is enough
+        keep.property_type = "townhouse"
+    if dup.text_conflicts or keep.text_conflicts is None:
+        keep.text_conflicts = {**(dup.text_conflicts or {}), **(keep.text_conflicts or {})}
     if STATUS_RANK.get(dup.family_status, 0) > STATUS_RANK.get(keep.family_status, 0):
         keep.family_status = dup.family_status
     for model in (ListingSource, Reaction, VisitStop):  # trip stops follow the surviving listing
