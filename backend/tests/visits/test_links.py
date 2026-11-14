@@ -1,7 +1,7 @@
 from datetime import datetime
 from urllib.parse import parse_qs, unquote, urlparse
 
-from homefinder.server.visits.links import google_maps_route, normalize_sa_mobile, whatsapp_link
+from homefinder.server.visits.links import google_maps_directions, normalize_sa_mobile, whatsapp_link
 
 
 def test_whatsapp_phone_normalization():
@@ -27,13 +27,9 @@ def test_whatsapp_message_leaks_nothing_else():
     assert "None" not in no_title and "يوم" not in no_title
 
 
-def test_google_maps_route():
-    url = google_maps_route((24.7, 46.6), [(24.8, 46.61), (24.81, 46.62), (24.82, 46.63)])
+def test_google_maps_directions_go_to_one_stop_from_the_phone():
+    url = google_maps_directions(24.8, 46.61)
+    assert url.startswith("https://www.google.com/maps/dir/?")
     q = parse_qs(urlparse(url).query)
-    assert q["origin"] == ["24.7,46.6"] and q["destination"] == ["24.82,46.63"]
-    assert q["waypoints"] == ["24.8,46.61|24.81,46.62"] and q["travelmode"] == ["driving"]
-
-
-def test_google_maps_route_single_stop_has_no_waypoints():
-    q = parse_qs(urlparse(google_maps_route((24.7, 46.6), [(24.8, 46.61)])).query)
-    assert "waypoints" not in q and q["destination"] == ["24.8,46.61"]
+    assert q == {"api": ["1"], "destination": ["24.8,46.61"], "travelmode": ["driving"]}
+    assert google_maps_directions(None, 46.61) is None

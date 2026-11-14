@@ -106,7 +106,7 @@ def test_requests_refused_by_the_cap_are_never_sent():
 
 def test_optimize_route_orders_stops_then_routes_them_with_live_traffic():
     origin = (24.70, 46.60)
-    # along a line east of the origin, given out of order: the round trip visits them nearest first
+    # along a line east of the origin, given out of order: the trip drives out to the farthest and works back
     stops = [(24.70, 46.70), (24.70, 46.62), (24.70, 46.66)]
 
     def h(req):
@@ -114,12 +114,12 @@ def test_optimize_route_orders_stops_then_routes_them_with_live_traffic():
         assert body["traffic"] == "live" and body["departureDateTime"] == "2026-11-21T16:00:00+03:00"
         locs = body["routePlanningLocations"]
         assert _latlng(locs["origin"]) == _latlng(locs["destination"]) == origin
-        assert [(c[1], c[0]) for c in locs["waypoints"]["coordinates"]] == [stops[1], stops[2], stops[0]]
+        assert [(c[1], c[0]) for c in locs["waypoints"]["coordinates"]] == [stops[0], stops[2], stops[1]]
         assert locs["waypoints"]["type"] == "MultiPoint"
         return httpx.Response(200, json=_route(600, 300, 420, 900))
     g = client(h)
     r = g.optimize_route(origin, stops, datetime(2026, 11, 21, 13, tzinfo=UTC))
-    assert r == {"order": [1, 2, 0], "leg_minutes": [10, 5, 7, 15]} and used == [1]
+    assert r == {"order": [0, 2, 1], "leg_minutes": [10, 5, 7, 15]} and used == [1]
 
 
 def test_optimize_single_stop():

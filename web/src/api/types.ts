@@ -80,6 +80,8 @@ export interface TripStop {
   whatsapp_url: string | null; phone: string | null; photos: string[]
   /** the listing's source-site URL when the server provides it (not in the original contract) */
   source_url?: string | null
+  /** Google Maps driving directions to this stop alone; null when the listing has no location */
+  maps_url: string | null
 }
 export interface Trip {
   id: number; title: string; date: string; start_time: string; origin_kind: TripOrigin; minutes_per_visit: number
@@ -87,7 +89,7 @@ export interface Trip {
   /** "no_route" | "skipped_no_location" | "precheck_pending"; unknown codes are ignored */
   warnings: string[]
   skipped_no_location?: number
-  total_drive_min: number | null; maps_url: string; stops: TripStop[]
+  total_drive_min: number | null; stops: TripStop[]
 }
 export interface TripCreate {
   listing_ids: number[]; date: string; start_time: string; origin_kind: TripOrigin; minutes_per_visit: number; title?: string

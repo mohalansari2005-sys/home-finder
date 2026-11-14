@@ -18,10 +18,10 @@ const detailOf = (id: number) => ({ ...card(id), description: 'وصف', livings:
 const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 export interface Trip {
   id: number; title: string; date: string; start_time: string; origin_kind: string; minutes_per_visit: number; status: string
-  warnings: string[]; skipped_no_location?: number; total_drive_min: number | null; maps_url: string
+  warnings: string[]; skipped_no_location?: number; total_drive_min: number | null
   stops: { id: number; position: number; listing: ReturnType<typeof card>; eta_local: string | null; etd_local: string | null; drive_min: number | null
     contact_status: string; rating: number | null; notes: string | null; flags: string[]; old_price?: number | null
-    whatsapp_url: string | null; phone: string | null; photos: string[] }[]
+    whatsapp_url: string | null; phone: string | null; photos: string[]; maps_url: string | null }[]
 }
 /** A trip of N stops starting at 16:00: 10 min drive, 30 min visit, 10 min between. Stop ids are tripId*10 + position. */
 export function makeTrip(id: number, listingIds: number[], o: { date?: string; start?: string; priceChange?: boolean } = {}): Trip {
@@ -30,10 +30,11 @@ export function makeTrip(id: number, listingIds: number[], o: { date?: string; s
     const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
     return { id: id * 10 + i, position: i, listing: card(lid, lid === 1 ? { score: 86 } : { district: 'الياسمين', score: 81 }), eta_local: hm(eta), etd_local: hm(eta + 30), drive_min: 10,
       contact_status: 'not_contacted', rating: null, notes: null, flags: o.priceChange && i === 1 ? ['price_changed'] : [], old_price: o.priceChange && i === 1 ? 2_050_000 : null,
-      whatsapp_url: i === 0 ? 'https://wa.me/966551234567?text=x' : null, phone: i === 0 ? '966551234567' : null, photos: [] as string[] }
+      whatsapp_url: i === 0 ? 'https://wa.me/966551234567?text=x' : null, phone: i === 0 ? '966551234567' : null, photos: [] as string[],
+      maps_url: `https://www.google.com/maps/dir/?api=1&destination=24.8,46.6${i}&travelmode=driving` }
   })
   return { id, title: 'رحلة السبت', date: o.date ?? '2026-11-14', start_time: o.start ?? '16:00', origin_kind: 'home', minutes_per_visit: 30, status: 'planned',
-    warnings: [], total_drive_min: 20 + 10 * listingIds.length, maps_url: 'https://www.google.com/maps/dir/?api=1&origin=24.7,46.6', stops }
+    warnings: [], total_drive_min: 20 + 10 * listingIds.length, stops }
 }
 
 const BLANK_STYLE = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e5e7eb' } }] }

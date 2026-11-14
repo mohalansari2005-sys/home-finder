@@ -209,10 +209,11 @@ def make_tools(session_factory):
         changes["done"] += 1
         return _j({"ok": True, "trip_id": out["id"], "url": f"/visits/{out['id']}", "title": out["title"],
                    "date": out["date"], "start_time": out["start_time"], "total_drive_min": out["total_drive_min"],
-                   "warnings": out["warnings"], "maps_url": out["maps_url"], "cards": [x["listing"] for x in out["stops"]],
+                   "warnings": out["warnings"], "cards": [x["listing"] for x in out["stops"]],
                    "stops": [{"position": x["position"], "title": x["listing"]["title"],
                               "district": x["listing"]["district"], "eta_local": x["eta_local"],
-                              "etd_local": x["etd_local"], "drive_min": x["drive_min"]} for x in out["stops"]]})
+                              "etd_local": x["etd_local"], "drive_min": x["drive_min"],
+                              "maps_url": x["maps_url"]} for x in out["stops"]]})
 
     return [get_preferences, update_preferences, search_listings, get_listing, compare_listings, request_scrape,
             get_filter_suggestions, apply_filter_suggestion, suggest_visit_trip, create_visit_trip]

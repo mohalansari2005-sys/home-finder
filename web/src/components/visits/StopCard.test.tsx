@@ -8,11 +8,12 @@ import { StopCard } from './StopCard'
 const stop: TripStop = {
   id: 7, position: 0, eta_local: '16:10', etd_local: '16:40', drive_min: 10, contact_status: 'not_contacted', rating: null,
   notes: null, flags: ['price_changed'], old_price: 2_050_000, whatsapp_url: 'https://wa.me/966551234567?text=x', phone: '966551234567', photos: [],
+  maps_url: 'https://www.google.com/maps/dir/?api=1&destination=24.81,46.62&travelmode=driving',
   listing: { id: 1, title: 'فيلا', price: 1900000, district: 'النرجس', photo_url: null, commutes: {}, score: 80, property_type: 'villa', bedrooms: 5,
-    status: 'active' } as never,
+    lat: 24.81, lng: 46.62, status: 'active' } as never,
 }
 const view = (s: TripStop, p: Partial<React.ComponentProps<typeof StopCard>> = {}) =>
-  render(<MemoryRouter><ol><StopCard stop={s} onPatch={vi.fn()} onUpload={vi.fn()} {...p} /></ol></MemoryRouter>)
+  render(<MemoryRouter><ol><StopCard tripId={3} stop={s} onPatch={vi.fn()} onUpload={vi.fn()} {...p} /></ol></MemoryRouter>)
 
 it('shows 12-hour times as number islands, flags, whatsapp, and updates status via radio semantics', async () => {
   const onPatch = vi.fn()
@@ -30,15 +31,18 @@ it('shows 12-hour times as number islands, flags, whatsapp, and updates status v
   expect(screen.queryByRole('button', { name: '1 من 5' })).toBeNull() // rating appears only once visited
 })
 
-it('without whatsapp offers the listing source link, else the in-app detail page', () => {
-  view({ ...stop, whatsapp_url: null, phone: null, source_url: 'https://sa.aqar.fm/1' })
-  expect(screen.getByRole('link', { name: 'فتح الإعلان' })).toHaveAttribute('href', 'https://sa.aqar.fm/1')
+it('opens the listing in the app (never the source site), with directions and a visited button', async () => {
+  const onPatch = vi.fn()
+  view({ ...stop, source_url: 'https://sa.aqar.fm/1' }, { onPatch })
+  expect(screen.getByRole('link', { name: 'فتح الإعلان' })).toHaveAttribute('href', '/listing/1?trip=3&stop=7')
+  expect(screen.getByRole('link', { name: 'خرائط Google' }))
+    .toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=24.81,46.62&travelmode=driving')
+  await userEvent.click(screen.getByRole('button', { name: 'تمت الزيارة' }))
+  expect(onPatch).toHaveBeenCalledWith({ contact_status: 'visited' })
   cleanup()
-  view({ ...stop, whatsapp_url: null, phone: null })
-  expect(screen.getByRole('link', { name: 'فتح الإعلان' })).toHaveAttribute('href', '/listing/1')
-  cleanup()
-  view(stop)
-  expect(screen.queryByRole('link', { name: 'فتح الإعلان' })).toBeNull()
+  view({ ...stop, contact_status: 'visited', maps_url: null })
+  expect(screen.getByRole('button', { name: 'تمت الزيارة' })).toBeDisabled()
+  expect(screen.queryByRole('link', { name: 'خرائط Google' })).toBeNull()
 })
 
 it('hides whatsapp without a url and marks removed listings', () => {

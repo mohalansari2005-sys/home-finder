@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from homefinder.models import Listing, ListingSource, VisitPhoto, VisitStop, VisitTrip
 from homefinder.server.routes.listings import _photo_urls, _price_drops, card
-from homefinder.server.visits.links import google_maps_route, normalize_sa_mobile, whatsapp_link
+from homefinder.server.visits.links import google_maps_directions, normalize_sa_mobile, whatsapp_link
 
 RIYADH = ZoneInfo("Asia/Riyadh")
 PUBLIC_FLAGS = ("removed", "price_changed")  # check_failed stays internal
@@ -68,13 +68,10 @@ def trip_out(s: Session, trip: VisitTrip) -> dict:
             "contact_status": st.contact_status, "rating": st.rating, "notes": st.notes, "flags": flags,
             "old_price": st.old_price if "price_changed" in flags else None,
             "whatsapp_url": whatsapp_link(phone, l.title, eta_local), "phone": phone,
-            "source_url": urls.get(st.listing_id),
+            "source_url": urls.get(st.listing_id), "maps_url": google_maps_directions(l.lat, l.lng),
             "photos": photos.get(st.id, [])})
-    route = [(listings[x.listing_id].lat, listings[x.listing_id].lng) for x in stops
-             if x.contact_status not in ("cancelled", "visited") and listings[x.listing_id].lat is not None]
     return {"id": trip.id, "title": trip.title, "date": trip.date.isoformat(),
             "start_time": trip.start_time.strftime("%H:%M"), "origin_kind": trip.origin_kind,
             "minutes_per_visit": trip.minutes_per_visit, "status": trip.status, "warnings": list(trip.warnings or []),
             "skipped_no_location": trip.skipped_no_location, "total_drive_min": trip.total_drive_min,
-            "maps_url": google_maps_route((trip.origin_lat, trip.origin_lng), route) if route else None,
             "stops": out_stops}
