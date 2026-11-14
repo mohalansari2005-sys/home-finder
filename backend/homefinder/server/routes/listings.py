@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource, Photo, PriceHistory, Reaction
 from homefinder.server.deps import get_db, require_family
-from homefinder.server.visits.links import whatsapp_link
+from homefinder.server.visits.links import normalize_sa_mobile, whatsapp_link
 from homefinder.suggestions import REASON_CODES
 
 router = APIRouter(dependencies=[Depends(require_family)])
@@ -61,14 +61,15 @@ def _price_drops(s: Session, ids: list[int]) -> dict[int, dict]:
 
 
 def _seller_phones(s: Session, ids: list[int]) -> dict[int, str]:
-    """First seller phone per listing (columns only, never `raw`); whatsapp_link drops landlines and junk."""
+    """First seller phone per listing that is a valid Saudi mobile (columns only, never `raw`)."""
     out: dict[int, str] = {}
     if not ids:
         return out
     for lid, phone in s.execute(select(ListingSource.listing_id, ListingSource.seller_phone)
                                 .where(ListingSource.listing_id.in_(ids), ListingSource.seller_phone.is_not(None))
                                 .order_by(ListingSource.id)):
-        out.setdefault(lid, phone)
+        if lid not in out and (n := normalize_sa_mobile(phone)):
+            out[lid] = n
     return out
 
 
