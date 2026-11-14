@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from homefinder import jobs, prefs
 from homefinder.models import Listing, ListingSource, Photo, PriceHistory, Reaction
 from homefinder.server.deps import get_db, require_family
+from homefinder.server.visits.links import normalize_sa_mobile, whatsapp_link
 from homefinder.suggestions import REASON_CODES
 
 router = APIRouter(dependencies=[Depends(require_family)])
@@ -59,13 +60,26 @@ def _price_drops(s: Session, ids: list[int]) -> dict[int, dict]:
             if last[0] < prev[0] and last[1] >= cutoff}
 
 
-def card(l: Listing, photos: list[str] | None, drop: dict | None = None) -> dict:
+def _seller_phones(s: Session, ids: list[int]) -> dict[int, str]:
+    """First seller phone per listing that is a valid Saudi mobile (columns only, never `raw`)."""
+    out: dict[int, str] = {}
+    if not ids:
+        return out
+    for lid, phone in s.execute(select(ListingSource.listing_id, ListingSource.seller_phone)
+                                .where(ListingSource.listing_id.in_(ids), ListingSource.seller_phone.is_not(None))
+                                .order_by(ListingSource.id)):
+        if lid not in out and (n := normalize_sa_mobile(phone)):
+            out[lid] = n
+    return out
+
+
+def card(l: Listing, photos: list[str] | None, drop: dict | None = None, phone: str | None = None) -> dict:
     return {"id": l.id, "title": l.title, "property_type": l.property_type, "price": l.price, "district": l.district,
             "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "built_area_m2": l.built_area_m2,
             "land_area_m2": l.land_area_m2, "photo_url": (photos or [None])[0], "score": l.score,
             "commutes": l.commutes or {}, "family_status": l.family_status,
             "status": l.status, "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
-            "price_drop": drop}
+            "price_drop": drop, "whatsapp_url": whatsapp_link(phone, l.title, None)}
 
 
 def visible():
@@ -90,13 +104,13 @@ def feed(view: Literal["all", "new", "bookmarked"] = "all", district: str | None
     more = len(rows) > limit
     rows = rows[:limit]
     ids = [l.id for l in rows]
-    photos, drops = _photo_urls(s, ids, first_only=True), _price_drops(s, ids)
-    return {"items": [card(l, photos.get(l.id), drops.get(l.id)) for l in rows],
+    photos, drops, phones = _photo_urls(s, ids, first_only=True), _price_drops(s, ids), _seller_phones(s, ids)
+    return {"items": [card(l, photos.get(l.id), drops.get(l.id), phones.get(l.id)) for l in rows],
             "next_offset": offset + limit if more else None}
 
 
 def _detail(s: Session, l: Listing, photos: list[str], drop: dict | None) -> dict:
-    out = card(l, photos, drop) | {k: getattr(l, k) for k in DETAIL_FIELDS}
+    out = card(l, photos, drop, _seller_phones(s, [l.id]).get(l.id)) | {k: getattr(l, k) for k in DETAIL_FIELDS}
     out["photos"] = photos
     out["sources"] = [{"source": x.source, "url": x.url, "seller_phone": x.seller_phone, "seller_name": x.seller_name}
                       for x in s.scalars(select(ListingSource).where(ListingSource.listing_id == l.id))]

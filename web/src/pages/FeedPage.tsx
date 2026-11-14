@@ -77,6 +77,7 @@ export function FeedPage() {
     onBookmark: current && current.family_status !== 'visited'
       ? () => react(current.id, current.family_status === 'bookmarked' ? 'unreject' : 'bookmark') : undefined,
     onReject: current && (() => rejectFlow.ask(current.id, current.title)),
+    onWhatsApp: current?.whatsapp_url ? () => window.open(current.whatsapp_url!, '_blank', 'noreferrer') : undefined,
   })
 
   const tabs = (

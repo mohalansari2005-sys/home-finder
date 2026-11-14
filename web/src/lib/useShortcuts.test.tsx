@@ -4,18 +4,19 @@ import { expect, it, vi } from 'vitest'
 import { useShortcuts } from './useShortcuts'
 
 function Harness({ enabled = true, h }: { enabled?: boolean; h: Record<string, () => void> }) {
-  useShortcuts({ enabled, onBookmark: h.b, onReject: h.x, onNext: h.next, onPrev: h.prev, onHelp: h.help })
+  useShortcuts({ enabled, onBookmark: h.b, onReject: h.x, onWhatsApp: h.w, onNext: h.next, onPrev: h.prev, onHelp: h.help })
   return <><input aria-label="حقل" /><textarea aria-label="نص" /><div contentEditable suppressContentEditableWarning role="textbox" aria-label="محرر" /></>
 }
-const handlers = () => ({ b: vi.fn(), x: vi.fn(), next: vi.fn(), prev: vi.fn(), help: vi.fn() })
+const handlers = () => ({ b: vi.fn(), x: vi.fn(), w: vi.fn(), next: vi.fn(), prev: vi.fn(), help: vi.fn() })
 
 it('maps keys; arrows follow RTL reading order', async () => {
   const h = handlers()
   render(<Harness h={h} />)
-  await userEvent.keyboard('bBxX')
+  await userEvent.keyboard('bBxXwW')
   await userEvent.keyboard('{ArrowLeft}{ArrowRight}?')
   expect(h.b).toHaveBeenCalledTimes(2)
   expect(h.x).toHaveBeenCalledTimes(2)
+  expect(h.w).toHaveBeenCalledTimes(2)
   expect(h.next).toHaveBeenCalledTimes(1)
   expect(h.prev).toHaveBeenCalledTimes(1)
   expect(h.help).toHaveBeenCalledTimes(1)

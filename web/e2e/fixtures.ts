@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 export const card = (id: number, extra: Record<string, unknown> = {}) => ({
   id, title: `فيلا ${id}`, property_type: 'villa', price: 1_500_000 + id, district: 'النرجس', bedrooms: 5, bathrooms: 4,
   built_area_m2: 400, land_area_m2: 300, photo_url: null, score: 70, commutes: { school: 10, work: 20 },
-  family_status: 'new', first_seen: null, lat: 24.8, lng: 46.6, price_drop: null, status: 'active', ...extra,
+  family_status: 'new', first_seen: null, lat: 24.8, lng: 46.6, price_drop: null, status: 'active', whatsapp_url: null, ...extra,
 })
 
 const WEIGHTS = { commute_school: 1, commute_work: 1, commute_university: 0.6, commute_airport: 0.2, price: 1, built_area: 0.6,
@@ -162,6 +162,7 @@ export async function mockApi(page: Page, opts: { loggedIn?: boolean; breakdown?
     }
     const det = url.pathname.match(/^\/api\/listings\/(\d+)$/)
     if (det) return json({ ...detailOf(Number(det[1])), sources: [{ source: 'aqar', url: 'https://sa.aqar.fm/1', seller_phone: '0500000000', seller_name: null }],
+      whatsapp_url: 'https://wa.me/966500000000?text=x',
       score_breakdown: opts.breakdown ?? null })
     if (url.pathname === '/api/map') return json([])
     if (url.pathname === '/api/places') {

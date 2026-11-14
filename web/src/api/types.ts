@@ -7,6 +7,8 @@ export interface ListingCard {
   photo_url: string | null; score: number | null; commutes: Partial<Record<CommuteKind, number | null>>
   family_status: FamilyStatus; first_seen: string | null; lat: number | null; lng: number | null
   price_drop: { from: number; to: number; at: string } | null
+  /** wa.me link to the seller; null when there is no valid Saudi mobile */
+  whatsapp_url: string | null
   /** 'active' | 'removed' (any other value is treated as normal) */
   status: string
 }

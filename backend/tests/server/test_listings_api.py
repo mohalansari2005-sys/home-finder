@@ -154,3 +154,22 @@ def test_detail_keeps_every_photo_but_cards_take_the_first(db, family):
     db.add_all([Photo(listing_id=l.id, position=1, path="b.webp"), Photo(listing_id=l.id, position=0, path="a.webp")]); db.commit()
     assert family.get(f"/api/listings/{l.id}").json()["photos"] == ["/photos/a.webp", "/photos/b.webp"]
     assert family.get("/api/feed").json()["items"][0]["photo_url"] == "/photos/a.webp"
+
+
+def test_feed_and_detail_carry_a_whatsapp_link_only_for_a_saudi_mobile(db, family):
+    mobile, landline, none = mk(db, title="فيلا الياسمين"), mk(db), mk(db)
+    db.query(ListingSource).filter_by(listing_id=landline.id).update({"seller_phone": "0112345678"})
+    db.query(ListingSource).filter_by(listing_id=none.id).update({"seller_phone": None}); db.commit()
+    cards = {c["id"]: c for c in family.get("/api/feed").json()["items"]}
+    assert cards[mobile.id]["whatsapp_url"].startswith("https://wa.me/966500000000?text=")
+    assert cards[landline.id]["whatsapp_url"] is None and cards[none.id]["whatsapp_url"] is None
+    assert family.get(f"/api/listings/{mobile.id}").json()["whatsapp_url"] == cards[mobile.id]["whatsapp_url"]
+
+
+def test_whatsapp_link_skips_a_landline_source_for_a_later_mobile_one(db, family):
+    l = mk(db)
+    db.query(ListingSource).filter_by(listing_id=l.id).update({"seller_phone": "0112345678"})
+    db.add(ListingSource(listing_id=l.id, source="haraj", source_id=f"h{l.id}", url="u", raw={}, seller_phone="0551234567"))
+    db.commit()
+    assert family.get("/api/feed").json()["items"][0]["whatsapp_url"].startswith("https://wa.me/966551234567?")
+    assert family.get(f"/api/listings/{l.id}").json()["whatsapp_url"].startswith("https://wa.me/966551234567?")

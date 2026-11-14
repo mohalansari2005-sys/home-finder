@@ -7,7 +7,7 @@ import { ListingCard } from './ListingCard'
 const base: T = {
   id: 1, title: 'فيلا درج داخلي', property_type: 'villa', price: 1850000, district: 'النرجس', bedrooms: 5,
   bathrooms: 4, built_area_m2: 420, land_area_m2: 312, photo_url: null, score: 82,
-  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null, status: 'active',
+  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null, status: 'active', whatsapp_url: null,
 }
 
 it('renders price, district, score and commute chips with missing as dash', () => {
@@ -83,4 +83,25 @@ it('compare toggle only shows in compare mode and does not open the card', async
   expect(onOpen).not.toHaveBeenCalled()
   rerender(<ListingCard listing={base} onOpen={onOpen} onReact={() => {}} compareMode compareSelected onCompareToggle={onToggle} />)
   expect(screen.getByRole('button', { name: 'قارن' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+it('whatsapp shortcut opens the seller chat without opening the card, and is hidden without a number', async () => {
+  const onOpen = vi.fn()
+  const url = 'https://wa.me/966500000000?text=x'
+  const { rerender } = render(<ListingCard listing={{ ...base, whatsapp_url: url }} onOpen={onOpen} onReact={() => {}} />)
+  const link = screen.getByRole('link', { name: 'مراسلة المعلن عبر واتساب' })
+  expect(link).toHaveAttribute('href', url)
+  expect(link).toHaveAttribute('target', '_blank')
+  link.addEventListener('click', (e) => e.preventDefault())  // jsdom cannot navigate
+  await userEvent.click(link)
+  expect(onOpen).not.toHaveBeenCalled()
+  rerender(<ListingCard listing={base} onOpen={onOpen} onReact={() => {}} />)
+  expect(screen.queryByRole('link', { name: 'مراسلة المعلن عبر واتساب' })).toBeNull()
+})
+
+it('a listing the family already opened is tagged as viewed; new ones are not', () => {
+  const { rerender } = render(<ListingCard listing={{ ...base, family_status: 'seen' }} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.getByText('تمت المشاهدة')).toBeInTheDocument()
+  rerender(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByText('تمت المشاهدة')).toBeNull()
 })
