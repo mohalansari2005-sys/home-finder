@@ -7,7 +7,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # never cancel a run on main: it may be in the middle of a deploy
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -112,3 +113,32 @@ jobs:
         run: |
           pip install pytest
           pytest backend/tests/test_fixtures_scrubbed.py -p no:cacheprovider --noconftest -q
+
+  deploy:
+    # every push to main that passes all checks goes live (see docs/DEPLOY.md, "Automatic deploys")
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, web, api-image, secrets-guard]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the web app
+        working-directory: web
+        run: npm ci && npm run build
+      - name: Ship it (the key can only run deploy/scripts/ci-deploy.sh on the server)
+        env:
+          HF_SERVER: ${{ secrets.HF_SERVER }}
+          HF_SSH_KEY: ${{ secrets.HF_SSH_KEY }}
+          HF_SSH_KNOWN_HOSTS: ${{ secrets.HF_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$HF_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$HF_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          tar czf - -C web/dist . | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes "$HF_SERVER" "$GITHUB_SHA"
