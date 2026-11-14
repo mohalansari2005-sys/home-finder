@@ -42,6 +42,16 @@ HF_SERVER=root@IP deploy/scripts/deploy.sh
 
 After the first deploy, **reboot the VPS once** (`ssh root@IP reboot`) and confirm the site loads, `docker compose -f deploy/docker-compose.yml ps` shows db, api and nginx up, and the worker shows متصل again. This proves the boot order.
 
+### Automatic deploys
+Every push to `main` that passes CI deploys itself: the `deploy` job in `.github/workflows/ci.yml` builds the web app and pipes it over SSH to `deploy/scripts/ci-deploy.sh`, which fast-forwards `/opt/homefinder` to that commit, updates `web/dist`, rebuilds the api and waits for it to answer. `deploy.sh` above still works for a manual deploy.
+
+The job uses a dedicated SSH key that can only run that script (`restrict,command="/opt/homefinder/deploy/scripts/ci-deploy.sh"` in `/root/.ssh/authorized_keys`). It connects to the public address, since the Tailscale address is handled by Tailscale SSH, which ignores `authorized_keys`. Repository secrets:
+- `HF_SERVER`: `root@<public IP>`
+- `HF_SSH_KEY`: the private half of the deploy key
+- `HF_SSH_KNOWN_HOSTS`: `ssh-keyscan -t ed25519 <public IP>` (check the fingerprint against `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server)
+
+To revoke it, delete the `github-actions-deploy@home-finder` line from `authorized_keys`.
+
 ## 5. Mac `backend/.env`
 ```
 DATABASE_URL=postgresql+psycopg://hf:<POSTGRES_PASSWORD>@<TAILSCALE_IP>:5432/homefinder
