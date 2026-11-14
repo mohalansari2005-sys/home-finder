@@ -21,7 +21,7 @@ function VisitBar({ tripId, stopId }: { tripId: number; stopId: number }) {
                        phone ? 'bottom-[calc(3.5rem+env(safe-area-inset-bottom))]' : 'bottom-0')}>
       <StopVisitButtons stop={stop} className="mx-auto max-w-3xl"
                         onPatch={(p) => patch.mutate({ stopId, patch: p }, {
-                          onSuccess: () => toast('تم تسجيل الزيارة'),
+                          onSuccess: () => toast(p.contact_status === 'visited' ? 'تم تسجيل الزيارة' : 'تم إلغاء تسجيل الزيارة'),
                           onError: () => toast.error('تعذّر حفظ التغيير. حاولوا مرة أخرى.'),
                         })} />
     </div>

@@ -9,7 +9,8 @@ interface Props {
   className?: string
 }
 
-/** Directions in Google Maps and a one-tap "visited" for a trip stop (trip page and the listing opened from it). */
+/** Directions in Google Maps and a one-tap "visited" for a trip stop (trip page and the listing opened from it).
+ *  Tapping "visited" again undoes it. */
 export function StopVisitButtons({ stop, onPatch, className }: Props) {
   const visited = stop.contact_status === 'visited'
   return (
@@ -20,8 +21,8 @@ export function StopVisitButtons({ stop, onPatch, className }: Props) {
           <Navigation aria-hidden strokeWidth={1.75} />خرائط Google
         </a>
       )}
-      <Button variant={visited ? 'default' : 'secondary'} aria-pressed={visited} disabled={visited}
-              onClick={() => onPatch({ contact_status: 'visited' })} className="h-11 flex-1 rounded-xl disabled:opacity-100">
+      <Button variant={visited ? 'default' : 'secondary'} aria-pressed={visited}
+              onClick={() => onPatch({ contact_status: visited ? 'not_contacted' : 'visited' })} className="h-11 flex-1 rounded-xl">
         <CircleCheck aria-hidden strokeWidth={1.75} />تمت الزيارة
       </Button>
     </div>

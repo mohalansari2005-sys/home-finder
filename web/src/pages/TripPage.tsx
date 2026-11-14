@@ -121,23 +121,6 @@ export function TripPage() {
               <TriangleAlert className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />{w.text}
             </div>
           ))}
-          {pending && (
-            <div role="status" className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />جارٍ التحقق من الإعلانات
-            </div>
-          )}
-
-          {q.stalled && (
-            <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-              <span>لم يكتمل التحقق بعد</span>
-              <Button variant="outline" size="sm" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>تحقق الآن</Button>
-            </div>
-          )}
-          <div className="grid gap-2">
-            <Button variant="outline" size="lg" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>
-              {precheck.isPending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ShieldCheck aria-hidden strokeWidth={1.75} />}تحقق من الإعلانات
-            </Button>
-          </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" className="h-11 rounded-xl" disabled={replan.isPending} onClick={() => replan.mutate(undefined, { onError: () => toast.error('تعذّرت إعادة الترتيب.') })}>
               {replan.isPending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw aria-hidden strokeWidth={1.75} />}إعادة الترتيب
@@ -159,6 +142,23 @@ export function TripPage() {
                         onSuccess: () => toast('تم رفع الصورة'), onError: (e) => toast.error(photoUploadError(e)) })} />
           ))}
         </ol>
+
+        {/* the listing check runs on its own 3 h before the trip; its results show on the stops (removed / price changed) */}
+        <section aria-labelledby="precheck-title" className="flex flex-col gap-2 rounded-2xl border border-dashed p-3 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="precheck-title" className="font-medium">التحقق من الإعلانات</h2>
+            {pending && (
+              <span role="status" className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />جارٍ التحقق من الإعلانات
+              </span>
+            )}
+            {q.stalled && <span role="status" className="text-muted-foreground">لم يكتمل التحقق بعد</span>}
+          </div>
+          <p className="text-muted-foreground">يتحقق تلقائيًا قبل الرحلة بثلاث ساعات أن الإعلانات ما زالت قائمة وأن أسعارها لم تتغير.</p>
+          <Button variant="outline" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>
+            {precheck.isPending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ShieldCheck aria-hidden strokeWidth={1.75} />}تحقق من الإعلانات الآن
+          </Button>
+        </section>
       </div>
       {wide && (
         <aside aria-label="خريطة المسار" className="sticky top-4 min-w-0">

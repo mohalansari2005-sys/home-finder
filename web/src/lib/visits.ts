@@ -32,14 +32,6 @@ export function tripWarnings(t: Pick<Trip, 'warnings' | 'skipped_no_location'>):
   return out
 }
 
-export const CONTACT_STATUSES = [
-  { value: 'not_contacted', label: 'لم نتواصل' },
-  { value: 'contacted', label: 'تم التواصل' },
-  { value: 'confirmed', label: 'مؤكد' },
-  { value: 'visited', label: 'تمت الزيارة' },
-  { value: 'cancelled', label: 'ملغاة' },
-] as const
-
 export const TRIP_STATUS_AR: Record<string, string> = { planned: 'مخططة', done: 'تمت', cancelled: 'ملغاة' }
 
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024
