@@ -19,7 +19,7 @@ def _now():
 class Listing(Base):
     __tablename__ = "listings"
     id: Mapped[int] = mapped_column(primary_key=True)
-    property_type: Mapped[str | None] = mapped_column(String(20))  # villa|apartment|floor|house
+    property_type: Mapped[str | None] = mapped_column(String(20))  # villa|apartment|floor|house|townhouse
     title: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     city: Mapped[str | None] = mapped_column(String(80))
@@ -53,6 +53,9 @@ class Listing(Base):
     merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("listings.id"))
     photos_fetched: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # where the ad text contradicts the source labels, e.g. {"district": {"label": "النرجس", "text": "القيروان"}};
+    # None = not checked yet, {} = checked, no conflict
+    text_conflicts: Mapped[dict | None] = mapped_column(JSONB)
     first_seen: Mapped[datetime] = _now()
     last_seen: Mapped[datetime] = _now()
 

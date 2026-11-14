@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 HARAJ_TAG_BY_TYPE: dict[PropertyType, str] = {"villa": "فلل للبيع", "apartment": "شقق للبيع", "floor": "دور للبيع",
                                               "house": "بيوت للبيع"}
 TYPE_BY_TAG = {v: k for k, v in HARAJ_TAG_BY_TYPE.items()}
+SEARCH_AS = {"townhouse": "villa"}  # no townhouse tag; they are posted as villas
 
 # canonical key -> real Haraj key. `field_map_override=True` uses the identity map (callers already use canonical keys).
 _FIELD_MAP = {"id": "id", "title": "title", "bodyTEXT": "bodyTEXT", "city": "city", "tags": "tags", "price": "price",
@@ -147,7 +148,7 @@ class HarajAdapter:
     def search(self, q: SearchQuery) -> Iterator[RawListing]:
         wanted = {normalize_district(d) for d in q.districts}
         seen: set[str] = set()
-        for ptype in q.property_types:
+        for ptype in dict.fromkeys(SEARCH_AS.get(t, t) for t in q.property_types):
             for tag in self._tags(ptype, q):
                 for page in range(q.max_pages):
                     self._pacer.wait()

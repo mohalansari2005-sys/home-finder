@@ -201,3 +201,48 @@ def test_search_listings_hides_what_the_feed_hides_unless_asked(db):
     t = tools()["search_listings"]
     assert [c["title"] for c in json.loads(t.invoke({}))["cards"]] == ["ظاهر"]
     assert {c["title"] for c in json.loads(t.invoke({"include_filtered": True}))["cards"]} == {"ظاهر", "مخفي"}
+
+
+def _set_districts(db, districts):
+    from homefinder import prefs
+    p = prefs.get_or_create(db)
+    p.hard_filters = {**p.hard_filters, "districts": districts}
+    db.commit()
+
+
+def test_adding_a_district_keeps_the_others_and_reports_the_list(db):
+    _set_districts(db, ["النرجس", "الياسمين"])
+    out = json.loads(tools()["update_preferences"].invoke({"add_districts": ["الملقا", "حي النرجس"]}))
+    assert out["ok"] and out["districts"] == ["النرجس", "الياسمين", "الملقا"]
+    assert out["districts_added"] == ["الملقا"] and out["districts_removed"] == []
+
+
+def test_removing_only_drops_the_named_district(db):
+    _set_districts(db, ["النرجس", "الياسمين", "الملقا"])
+    out = json.loads(tools()["update_preferences"].invoke({"remove_districts": ["الياسمين"]}))
+    assert out["districts"] == ["النرجس", "الملقا"] and out["districts_removed"] == ["الياسمين"]
+
+
+def test_the_agent_cannot_replace_the_district_list(db):
+    _set_districts(db, ["النرجس", "الياسمين"])
+    out = json.loads(tools()["update_preferences"].invoke({"hard_filters": {"districts": ["الملقا"]}}))
+    assert out["ok"] is False and "add_districts" in out["error"]
+    db.expire_all()
+    assert db.get(Preferences, 1).hard_filters["districts"] == ["النرجس", "الياسمين"]
+
+
+def test_searching_a_district_outside_the_list_leaves_preferences_alone(db):
+    _set_districts(db, ["النرجس"])
+    db.add(Listing(title="فيلا", district="الملقا", price=2_000_000, passes_filters=False, score=70)); db.commit()
+    out = json.loads(tools()["search_listings"].invoke({"district": "الملقا", "include_filtered": True}))
+    assert out["count"] == 1
+    db.expire_all()
+    assert db.get(Preferences, 1).hard_filters["districts"] == ["النرجس"]
+
+
+def test_listing_cards_carry_text_conflicts(db):
+    l = Listing(title="فيلا", district="النرجس", price=2_000_000, passes_filters=True, score=70,
+                text_conflicts={"district": {"label": "النرجس", "text": "القيروان"}})
+    db.add(l); db.commit()
+    out = json.loads(tools()["get_listing"].invoke({"listing_id": l.id}))
+    assert out["listing"]["text_conflicts"]["district"]["text"] == "القيروان"

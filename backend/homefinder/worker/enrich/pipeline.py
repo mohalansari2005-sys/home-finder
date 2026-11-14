@@ -12,6 +12,7 @@ from homefinder.worker.enrich.commute import compute_commutes
 from homefinder.worker.enrich.extract import extract_missing
 from homefinder.worker.enrich.geo import ensure_location
 from homefinder.worker.enrich.photos import fetch_photos
+from homefinder.worker.enrich.text_check import check_text
 
 log = logging.getLogger(__name__)
 RETRY_DELAY = timedelta(hours=6)
@@ -29,6 +30,8 @@ def enrich_listing(deps, listing_id: int, attempt: int = 0) -> dict:
         steps = []
         if deps.llm is not None:
             steps.append(("extract", lambda: [setattr(l, k, v) for k, v in extract_missing(deps.llm, l).items()]))
+            if l.text_conflicts is None:  # once per listing
+                steps.append(("text_check", lambda: setattr(l, "text_conflicts", check_text(deps.llm, l))))
         steps.append(("geo", lambda: ensure_location(deps.maps, l)))
         for name, step in steps:
             try:

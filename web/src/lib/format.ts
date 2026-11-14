@@ -1,6 +1,6 @@
 import { Briefcase, GraduationCap, House, Plane, School, type LucideIcon } from 'lucide-react'
 
-import type { PlaceKind } from '../api/types'
+import type { PlaceKind, TextConflicts } from '../api/types'
 
 // All number/date formatting goes through here (see docs/arabic-ui-rules.md).
 // Never call Intl with bare 'ar' / 'ar-SA': digits, percent sign and calendar vary by runtime.
@@ -69,7 +69,18 @@ export function formatYears(n: number | null | undefined): string {
   return pluralAr(n, { zero: 'جديد', one: 'سنة واحدة', two: 'سنتان', few: `${c} سنوات`, many: `${c} سنة`, other: `${c} سنة` })
 }
 
-export const PROPERTY_TYPE_AR: Record<string, string> = { villa: 'فيلا', apartment: 'شقة', floor: 'دور', house: 'بيت' }
+export const PROPERTY_TYPE_AR: Record<string, string> = { villa: 'فيلا', apartment: 'شقة', floor: 'دور', house: 'بيت', townhouse: 'تاون هاوس' }
+
+/** One Arabic line per place where the ad text contradicts the site's labels. */
+export function textConflictLines(tc: TextConflicts | null | undefined): string[] {
+  const out: string[] = []
+  if (tc?.district) out.push(`نص الإعلان يذكر حي ${tc.district.text}، والموقع يصنّفه في ${tc.district.label}`)
+  if (tc?.property_type) {
+    const ar = (t: string) => PROPERTY_TYPE_AR[t] ?? t
+    out.push(`نص الإعلان يصفه ${ar(tc.property_type.text)}، والموقع يصنّفه ${ar(tc.property_type.label)}`)
+  }
+  return out
+}
 export const COMMUTE_ICONS: { kind: 'school' | 'work' | 'university' | 'airport'; Icon: LucideIcon; label: string }[] = [
   { kind: 'school', Icon: School, label: 'المدرسة' },
   { kind: 'work', Icon: Briefcase, label: 'العمل' },

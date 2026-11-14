@@ -117,3 +117,15 @@ def test_merge_repoints_visit_stops_to_the_surviving_listing(db):
     assert dedupe_and_merge(db, new.id) == old.id
     db.commit()
     assert db.query(VisitStop).one().listing_id == old.id
+
+
+def test_a_townhouse_still_matches_its_villa_post_and_keeps_type_and_warning(db):
+    assert is_duplicate(Listing(price=2_000_000, built_area_m2=400, land_area_m2=300, property_type="villa"),
+                        Listing(price=2_000_000, built_area_m2=400, land_area_m2=300, property_type="townhouse"), [], [])
+    old = mk(db, sid="a1", text_conflicts={})
+    new = mk(db, lat=24.80020, src="haraj", sid="h9", ptype="townhouse",
+             text_conflicts={"property_type": {"label": "villa", "text": "townhouse"}}); db.commit()
+    assert dedupe_and_merge(db, new.id) == old.id
+    db.commit(); db.expire_all()
+    old = db.get(Listing, old.id)
+    assert old.property_type == "townhouse" and old.text_conflicts["property_type"]["text"] == "townhouse"

@@ -71,6 +71,8 @@ def ingest_raw(s: Session, raw: RawListing) -> IngestResult:
         v = getattr(f, k)
         if k == "price" and not follow_price:
             continue
+        if k == "property_type" and listing.property_type == "townhouse":
+            continue  # set from the ad text; the source only ever says villa
         if v is not None:
             setattr(listing, k, v)
     if price_changed:

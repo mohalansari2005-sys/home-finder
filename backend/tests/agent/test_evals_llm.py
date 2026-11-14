@@ -1,4 +1,4 @@
-"""Real-model agent evals (17 cases). Manual: OPENAI_API_KEY=... pytest -m llm tests/agent -v. Skipped without a key."""
+"""Real-model agent evals (20 cases). Manual: OPENAI_API_KEY=... pytest -m llm tests/agent -v. Skipped without a key."""
 import os
 import re
 import uuid
@@ -36,6 +36,10 @@ def _lookup(prefs, dotted: str):
 def test_agent_eval(case, db):
     from homefinder import prefs as prefs_mod
     _seed(db)
+    if case.get("start_prefs"):
+        p = prefs_mod.get_or_create(db)
+        p.hard_filters = {**p.hard_filters, **case["start_prefs"]}
+        db.commit()
     agent = build_agent(make_chat_model(), make_tools(session_scope), InMemorySaver())
     cfg = {"configurable": {"thread_id": str(uuid.uuid4())}}
     called: set[str] = set()
@@ -44,6 +48,7 @@ def test_agent_eval(case, db):
         for m in out["messages"]:
             called.update(tc["name"] for tc in getattr(m, "tool_calls", None) or [])
     assert set(case["expect_tools"]) <= called, f"called {called}"
+    assert not set(case.get("forbid_tools") or []) & called, f"called {called}"
     db.expire_all()
     p = prefs_mod.get_or_create(db)
     for k, v in (case.get("expect_prefs") or {}).items():
