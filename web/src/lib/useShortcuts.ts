@@ -4,6 +4,7 @@ export interface ShortcutHandlers {
   enabled?: boolean
   onBookmark?: () => void
   onReject?: () => void
+  onWhatsApp?: () => void
   onNext?: () => void
   onPrev?: () => void
   onHelp?: () => void
@@ -30,9 +31,10 @@ export function useShortcuts(h: ShortcutHandlers) {
       const c = ref.current
       const act = (fn?: () => void) => { if (fn) { e.preventDefault(); fn() } }
       // physical key codes too, so the shortcuts also work on an Arabic keyboard layout
-      switch (e.code === 'KeyB' ? 'b' : e.code === 'KeyX' ? 'x' : e.key) {
+      switch (e.code === 'KeyB' ? 'b' : e.code === 'KeyX' ? 'x' : e.code === 'KeyW' ? 'w' : e.key) {
         case 'b': case 'B': return act(c.onBookmark)
         case 'x': case 'X': return act(c.onReject)
+        case 'w': case 'W': return act(c.onWhatsApp)
         case 'ArrowLeft': return act(c.onNext)
         case 'ArrowRight': return act(c.onPrev)
         case '?': return act(c.onHelp)

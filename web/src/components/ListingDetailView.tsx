@@ -15,11 +15,6 @@ import { useRejectFlow } from './useRejectFlow'
 
 const yesNo = (v: boolean | null) => (v == null ? null : v ? 'نعم' : 'لا')
 
-function waLink(phone: string, title: string | null) {
-  const digits = phone.replace(/\D/g, '').replace(/^0/, '966')
-  return `https://wa.me/${digits}?text=${encodeURIComponent(`السلام عليكم، بخصوص إعلانكم: ${title ?? ''}`)}`
-}
-
 function Gallery({ photos }: { photos: string[] }) {
   const [api, setApi] = useState<CarouselApi>()
   const [idx, setIdx] = useState(0)
@@ -154,9 +149,11 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
           <Button asChild variant="outline" className="flex-1">
             <a href={`tel:${phone}`}><Phone aria-hidden />اتصال <bdi className="text-xs text-muted-foreground">{phone}</bdi></a>
           </Button>
-          <Button asChild variant="outline" className="flex-1">
-            <a href={waLink(phone, l.title)} target="_blank" rel="noreferrer"><MessageCircle aria-hidden />واتساب</a>
-          </Button>
+          {l.whatsapp_url && (
+            <Button asChild variant="outline" className="flex-1">
+              <a href={l.whatsapp_url} target="_blank" rel="noreferrer"><MessageCircle aria-hidden />واتساب</a>
+            </Button>
+          )}
         </div>
       )}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-3">

@@ -1,4 +1,4 @@
-import { Bath, BedDouble, Bookmark, BookmarkCheck, Check, Columns2, House, Ruler, TrendingDown, X } from 'lucide-react'
+import { Bath, BedDouble, Bookmark, BookmarkCheck, Check, Columns2, Eye, House, MessageCircle, Ruler, TrendingDown, X } from 'lucide-react'
 import type { ListingCard as T, ReactKind } from '../api/types'
 import { formatArea, formatNumber, formatPrice, formatRooms, PROPERTY_TYPE_AR } from '../lib/format'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +29,11 @@ export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode
         <ScoreSeal score={l.score} className="absolute start-2 top-2" />
         <div className="absolute end-2 top-2 flex flex-col items-end gap-1.5">
           {l.family_status === 'new' && <Badge>جديد</Badge>}
+          {l.family_status === 'seen' && (
+            <Badge variant="secondary" className="h-6 border-border bg-card px-2.5 text-sm text-muted-foreground">
+              <Eye strokeWidth={1.75} aria-hidden />تمت المشاهدة
+            </Badge>
+          )}
           {l.price_drop && (
             <Badge data-testid="price-drop" className="h-6 bg-card px-2.5 text-sm font-semibold text-success">
               <TrendingDown strokeWidth={2} aria-hidden />
@@ -62,6 +67,14 @@ export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode
             <X aria-hidden />
             استبعاد
           </Button>
+          {l.whatsapp_url && (
+            <Button asChild variant="outline" size="icon" className="shrink-0 text-success">
+              <a href={l.whatsapp_url} target="_blank" rel="noreferrer" aria-label="مراسلة المعلن عبر واتساب"
+                 onClick={(e) => e.stopPropagation()}>
+                <MessageCircle aria-hidden />
+              </a>
+            </Button>
+          )}
         </div>
         {compareMode && (
           <Button variant={compareSelected ? 'default' : 'outline'} aria-pressed={!!compareSelected} className="w-full"

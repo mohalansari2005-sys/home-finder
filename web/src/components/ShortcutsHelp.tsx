@@ -10,6 +10,7 @@ const Key = ({ children, label }: { children: ReactNode; label?: string }) => (
 const ROWS: { keys: ReactNode; label: string }[] = [
   { keys: <Key>B</Key>, label: 'حفظ العقار المحدد أو إلغاء حفظه' },
   { keys: <Key>X</Key>, label: 'استبعاد العقار المحدد' },
+  { keys: <Key>W</Key>, label: 'مراسلة معلن العقار المحدد عبر واتساب' },
   { keys: <Key label="السهم الأيسر"><ArrowLeft className="size-4" strokeWidth={1.75} aria-hidden /></Key>, label: 'العقار التالي' },
   { keys: <Key label="السهم الأيمن"><ArrowRight className="size-4" strokeWidth={1.75} aria-hidden /></Key>, label: 'العقار السابق' },
   { keys: <Key>?</Key>, label: 'عرض هذه القائمة' },
