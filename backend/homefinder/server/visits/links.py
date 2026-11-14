@@ -42,12 +42,10 @@ def whatsapp_link(phone: str | None, listing_title: str | None, eta_local: datet
     return f"https://wa.me/{n}?text={quote(msg)}"
 
 
-def _ll(p) -> str:
-    return f"{p[0]},{p[1]}"
-
-
-def google_maps_route(origin, stops) -> str:
-    params = {"api": "1", "origin": _ll(origin), "destination": _ll(stops[-1]), "travelmode": "driving"}
-    if len(stops) > 1:
-        params["waypoints"] = "|".join(_ll(s) for s in stops[:-1])
-    return "https://www.google.com/maps/dir/?" + urlencode(params, safe=",|")
+def google_maps_directions(lat: float | None, lng: float | None) -> str | None:
+    """Driving directions to one stop from wherever the phone is. Each stop gets its own link: a single
+    multi-stop Google Maps trip is hard to follow and loses its place once a visit runs long."""
+    if lat is None or lng is None:
+        return None
+    params = {"api": "1", "destination": f"{lat},{lng}", "travelmode": "driving"}
+    return "https://www.google.com/maps/dir/?" + urlencode(params, safe=",")

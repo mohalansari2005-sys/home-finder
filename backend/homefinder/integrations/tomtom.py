@@ -3,7 +3,7 @@
 - Drive times: Routing API v3 Calculate Route, one request per destination, with a departure time. Orbis has
   no Matrix Routing API, and the TomTom Maps matrix bills every cell as a request against a free allowance
   an eighth of Routing's, so one route per destination is both the available and the cheaper option.
-- Trip routes: the visit order is chosen locally (`tour.best_round_trip`, Orbis routing has no waypoint
+- Trip routes: the visit order is chosen locally (`tour.farthest_first`, Orbis routing has no waypoint
   optimization) and one Calculate Route over the ordered stops gives traffic-aware times for every leg.
 - Geocoding: Geocoding API v2, restricted to district-level areas, so a miss never falls back to a city centroid.
 """
@@ -15,7 +15,7 @@ import httpx
 
 from homefinder import usage
 from homefinder.config import get_settings
-from homefinder.integrations.tour import best_round_trip
+from homefinder.integrations.tour import farthest_first
 
 BASE_URL = "https://api.tomtom.com/maps/orbis"  # TomTom Orbis Maps; every endpoint below hangs off this
 ROUTE_URL = BASE_URL + "/routing/routes/calculate"
@@ -107,7 +107,7 @@ class TomTomClient:
         origin->1st, 1st->2nd, ..., last->origin (None for a leg TomTom gave no time for)}. None = no route.
         Live traffic: TomTom adds jams expected in the trip's time window on top of the historical times."""
         self._use(1)
-        order = best_round_trip(origin, stops)
+        order = farthest_first(origin, stops)
         route = self._route([origin, *[stops[i] for i in order], origin], departure, "live")
         if route is None:
             return None

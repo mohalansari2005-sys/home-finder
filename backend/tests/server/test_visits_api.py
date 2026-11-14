@@ -59,7 +59,7 @@ def test_groups_and_trip_flow(db, family):
     assert trip["skipped_no_location"] == 1 and "precheck_pending" in trip["warnings"] and "no_route" in trip["warnings"]
     assert trip["stops"][0]["whatsapp_url"].startswith("https://wa.me/966551234567")
     assert trip["stops"][0]["phone"] == "966551234567"
-    assert trip["maps_url"].startswith("https://www.google.com/maps/dir/")
+    assert all(s["maps_url"].startswith("https://www.google.com/maps/dir/") for s in trip["stops"])
     assert db.query(Job).filter_by(type="precheck_trip").count() == 1
     sid = trip["stops"][0]["id"]
     out = family.patch(f"/api/visits/stops/{sid}", json={"contact_status": "visited", "rating": 5, "notes": "ممتاز"}).json()
@@ -72,11 +72,11 @@ def test_trip_shape_matches_contract(db, family, monkeypatch):
     ids = seed(db)
     t = make_trip(family, ids[:2])
     assert set(t) == {"id", "title", "date", "start_time", "origin_kind", "minutes_per_visit", "status", "warnings",
-                      "total_drive_min", "skipped_no_location", "maps_url", "stops"}
+                      "total_drive_min", "skipped_no_location", "stops"}
     assert (t["date"], t["start_time"], t["status"], t["total_drive_min"]) == ("2026-12-05", "16:00", "planned", 30)
     s0, s1 = t["stops"]
     assert set(s0) == {"id", "position", "listing", "eta_local", "etd_local", "drive_min", "contact_status", "rating",
-                       "notes", "flags", "whatsapp_url", "phone", "photos", "old_price", "source_url"}
+                       "notes", "flags", "whatsapp_url", "phone", "photos", "old_price", "source_url", "maps_url"}
     assert (s0["eta_local"], s0["etd_local"], s1["eta_local"]) == ("16:10", "16:40", "16:50")
     assert s0["contact_status"] == "not_contacted" and s0["flags"] == [] and s0["photos"] == []
     assert s0["listing"]["id"] in ids and "photo_url" in s0["listing"]
@@ -161,7 +161,6 @@ def test_cancel_stop_replans(db, family, monkeypatch):
     assert by[sid]["contact_status"] == "cancelled" and by[sid]["eta_local"] is None
     active = [s for s in out["stops"] if s["contact_status"] != "cancelled"]
     assert [s["position"] for s in active] == [0, 1] and active[0]["eta_local"] == "16:10" and out["total_drive_min"] == 30
-    assert out["maps_url"].count("%7C") + out["maps_url"].count("|") == 0  # two stops: one waypoint-less destination + origin only
     # replan endpoint
     out2 = family.post(f"/api/visits/trips/{t['id']}/replan").json()
     assert out2["total_drive_min"] == 30

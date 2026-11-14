@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Camera, Car, ExternalLink, Home, MessageCircle, Phone, TriangleAlert } from 'lucide-react'
+import { Camera, Car, FileText, Home, MessageCircle, Phone, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
 import type { ContactStatus, StopPatch, TripStop } from '../../api/types'
 import { ScoreSeal } from '../ScoreSeal'
@@ -12,8 +12,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { ClockRange } from './Clock'
 import { StarRating } from './StarRating'
+import { StopVisitButtons } from './StopVisitButtons'
 
 interface Props {
+  tripId: number
   stop: TripStop
   onPatch: (p: StopPatch) => void
   onUpload: (f: File) => void
@@ -22,7 +24,7 @@ interface Props {
 
 const rowTone = 'flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm'
 
-export function StopCard({ stop, onPatch, onUpload, active }: Props) {
+export function StopCard({ tripId, stop, onPatch, onUpload, active }: Props) {
   const l = stop.listing
   const notesId = useId()
   const [notes, setNotes] = useState(stop.notes ?? '')
@@ -30,6 +32,7 @@ export function StopCard({ stop, onPatch, onUpload, active }: Props) {
   const removed = stop.flags.includes('removed') || l.status === 'removed'
   const priceChanged = stop.flags.includes('price_changed')
   const visited = stop.contact_status === 'visited'
+  const listingPath = `/listing/${l.id}?trip=${tripId}&stop=${stop.id}`
   const title = l.title ?? `${PROPERTY_TYPE_AR[l.property_type ?? ''] ?? 'عقار'}${l.district ? ` في ${l.district}` : ''}`
 
   const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +60,7 @@ export function StopCard({ stop, onPatch, onUpload, active }: Props) {
         </div>
 
         <div className={cn('flex flex-col gap-3 rounded-2xl border bg-card p-3', active && 'ring-2 ring-ring', removed && 'opacity-90')}>
-          <Link to={`/listing/${l.id}`} className="flex gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Link to={listingPath} className="flex gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="flex h-14 w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground">
               {l.photo_url
                 ? <img src={l.photo_url} alt="" loading="lazy" width={144} height={112} className={cn('size-full object-cover', removed && 'grayscale')} />
@@ -99,11 +102,8 @@ export function StopCard({ stop, onPatch, onUpload, active }: Props) {
             ))}
           </ToggleGroup>
 
-          {!stop.whatsapp_url && (
-            stop.source_url
-              ? <a href={stop.source_url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><ExternalLink aria-hidden strokeWidth={1.75} />فتح الإعلان</a>
-              : <Link to={`/listing/${l.id}`} className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><ExternalLink aria-hidden strokeWidth={1.75} />فتح الإعلان</Link>
-          )}
+          <Link to={listingPath} className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><FileText aria-hidden strokeWidth={1.75} />فتح الإعلان</Link>
+          <StopVisitButtons stop={stop} onPatch={onPatch} />
           {(stop.whatsapp_url || stop.phone) && (
             <div className="flex gap-2">
               {stop.whatsapp_url && (

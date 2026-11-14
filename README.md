@@ -19,7 +19,7 @@ We didn't need another listings site. We needed something to do the tedious part
 | Re-filtering every day | Hard filters (budget, districts, type, rooms, drive time, building age, street width), and only new or changed homes are flagged |
 | Forgetting why you passed on a home | Reject reasons, learning from saves and rejects, and suggestions like "filter out buildings older than 20 years?" |
 | Prices change and ads vanish | Price history, price-drop badges and "listing removed" chips |
-| Chaotic visit days | Trips grouped by district, with driving order, time slots, WhatsApp links and a pre-visit check that the ads are still live |
+| Chaotic visit days | Trips grouped by district, driving out to the farthest home first and ending nearest home, time slots, WhatsApp links and a pre-visit check that the ads are still live |
 
 The app also has:
 - **An Arabic chat assistant.** You talk to it the way you'd talk to the family group. "We want a villa in Al Narjis or Al Yasmin for around two million, and the school matters more than work" updates the filters and weights and replies with the best matches as cards you can open. It can also explain a score, compare homes or plan a visit. Every change it makes shows up in the settings history, and replies stream in as they're written.

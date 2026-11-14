@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Car, ChevronRight, CircleCheck, Clock as ClockIcon, Loader2, MapPin, Navigation, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Car, ChevronRight, CircleCheck, Clock as ClockIcon, Loader2, MapPin, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { usePatchStop, usePatchTripStatus, usePlaces, usePrecheckTrip, useReplanTrip, useTrip, useUploadStopPhoto } from '../api/hooks'
@@ -10,9 +10,8 @@ import { StopCard } from '../components/visits/StopCard'
 import { formatNumber, formatTripDate, pluralAr } from '../lib/format'
 import { photoUploadError, tripWarnings, TRIP_STATUS_AR } from '../lib/visits'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 
 function useMediaQuery(q: string) {
   const [m, setM] = useState(() => window.matchMedia(q).matches)
@@ -134,10 +133,7 @@ export function TripPage() {
               <Button variant="outline" size="sm" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>تحقق الآن</Button>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2">
-            <a href={trip.maps_url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ size: 'lg' }), 'h-11 rounded-xl')}>
-              <Navigation aria-hidden strokeWidth={1.75} />افتح في خرائط Google
-            </a>
+          <div className="grid gap-2">
             <Button variant="outline" size="lg" className="h-11 rounded-xl" disabled={precheck.isPending} onClick={onPrecheck}>
               {precheck.isPending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ShieldCheck aria-hidden strokeWidth={1.75} />}تحقق من الإعلانات
             </Button>
@@ -157,7 +153,7 @@ export function TripPage() {
         <ol aria-label="محطات الزيارة" className="relative mt-2">
           <span aria-hidden className="absolute bottom-10 start-[15px] top-5 w-0.5 bg-border" />
           {trip.stops.map((s) => (
-            <StopCard key={s.id} stop={s} active={active === s.id}
+            <StopCard key={s.id} tripId={id} stop={s} active={active === s.id}
                       onPatch={(p) => patch.mutate({ stopId: s.id, patch: p }, { onError: () => toast.error('تعذّر حفظ التغيير. حاولوا مرة أخرى.') })}
                       onUpload={(file) => upload.mutate({ stopId: s.id, file }, {
                         onSuccess: () => toast('تم رفع الصورة'), onError: (e) => toast.error(photoUploadError(e)) })} />

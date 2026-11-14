@@ -31,7 +31,10 @@ test('plan a trip, mark visited, rate, notes and photo', async ({ page }, info) 
   await expect(page.locator('body')).not.toContainText('16:10')
   await expect(page.getByRole('link', { name: 'مراسلة المعلن عبر واتساب' })).toHaveAttribute('href', /wa\.me/)
   await expect(page.getByRole('link', { name: 'مراسلة المعلن عبر واتساب' })).toHaveCount(1) // only the stop with a phone
-  await expect(page.getByRole('link', { name: 'افتح في خرائط Google' })).toHaveAttribute('href', /google\.com\/maps/)
+  // one directions link per stop, no multi-stop Google Maps trip
+  await expect(page.getByRole('link', { name: 'افتح في خرائط Google' })).toHaveCount(0)
+  await expect(stops.getByRole('link', { name: 'خرائط Google' })).toHaveCount(2)
+  await expect(stops.first().getByRole('link', { name: 'خرائط Google' })).toHaveAttribute('href', /destination=24\.8,46\.60/)
   await expect(stops.first()).toBeVisible()
 
   const first = page.locator('#stop-10')
