@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bookmark, Check, ChevronLeft, ChevronRight, ExternalLink, MapPin, MessageCircle, Phone, RefreshCw, X } from 'lucide-react'
 import { useListing, useReactWithUndo } from '../api/hooks'
-import { FACING_AR, formatArea, formatNumber, formatPrice, formatYears, PROPERTY_TYPE_AR } from '../lib/format'
+import { FACING_AR, formatArea, formatNumber, formatPrice, formatYears, PROPERTY_TYPE_AR, textConflictLines } from '../lib/format'
 import { REASON_AR } from '../lib/factors'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -128,6 +128,12 @@ export function ListingDetailView({ id, onClose }: { id: number; onClose?: () =>
         <div role="note" className="rounded-2xl bg-warning-soft px-4 py-3 text-sm text-warning">
           <p className="font-medium">لا يطابق شروطكم:</p>
           <ul className="mt-1 list-inside list-disc">{l.filter_reasons.map((r) => <li key={r}>{REASON_AR[r] ?? r}</li>)}</ul>
+        </div>
+      )}
+      {textConflictLines(l.text_conflicts).length > 0 && (
+        <div role="note" className="rounded-2xl bg-warning-soft px-4 py-3 text-sm text-warning">
+          <p className="font-medium">تأكدوا من البائع قبل الزيارة:</p>
+          <ul className="mt-1 list-inside list-disc">{textConflictLines(l.text_conflicts).map((c) => <li key={c}>{c}</li>)}</ul>
         </div>
       )}
       <ScoreBreakdown breakdown={l.score_breakdown} />

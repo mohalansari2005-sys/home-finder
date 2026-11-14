@@ -1,6 +1,6 @@
-import { Bath, BedDouble, Bookmark, BookmarkCheck, Check, Columns2, Eye, House, MessageCircle, Ruler, TrendingDown, X } from 'lucide-react'
+import { Bath, BedDouble, Bookmark, BookmarkCheck, Check, Columns2, Eye, House, MessageCircle, Ruler, TrendingDown, TriangleAlert, X } from 'lucide-react'
 import type { ListingCard as T, ReactKind } from '../api/types'
-import { formatArea, formatNumber, formatPrice, formatRooms, PROPERTY_TYPE_AR } from '../lib/format'
+import { formatArea, formatNumber, formatPrice, formatRooms, PROPERTY_TYPE_AR, textConflictLines } from '../lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode
   const visited = l.family_status === 'visited'  // already saved; toggling would reset the visit state
   const saved = l.family_status === 'bookmarked' || visited
   const area = l.built_area_m2 ?? l.land_area_m2
+  const conflicts = textConflictLines(l.text_conflicts)
   return (
     <article onClick={() => onOpen(l.id)}
              className={cn('cursor-pointer space-y-3 rounded-2xl border p-2 transition-transform active:scale-[0.99] motion-reduce:active:scale-100',
@@ -56,6 +57,11 @@ export function ListingCard({ listing: l, selected, onOpen, onReact, compareMode
           {l.bathrooms != null && <span className="inline-flex items-center gap-1"><Bath className="size-4 text-muted-foreground" strokeWidth={1.75} aria-hidden /><bdi>{l.bathrooms}</bdi></span>}
           <span className="inline-flex items-center gap-1"><Ruler className="size-4 text-muted-foreground" strokeWidth={1.75} aria-hidden /><bdi>{formatArea(area)}</bdi></span>
         </div>
+        {conflicts.map((c) => (
+          <p key={c} className="flex items-start gap-1.5 text-sm text-warning">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />{c}
+          </p>
+        ))}
         <CommuteChips commutes={l.commutes} />
         <div className="flex gap-2 pt-1">
           <Button variant={saved ? 'default' : 'secondary'} aria-pressed={saved} disabled={visited} className="flex-1"

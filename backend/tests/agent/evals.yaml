@@ -59,3 +59,19 @@
 - name: best_district_to_visit
   messages: ["وش أفضل حي نزوره؟"]
   expect_tools: [suggest_visit_trip]
+- name: ask_about_district_keeps_list
+  start_prefs: {districts: ["النرجس", "الياسمين"]}
+  messages: ["وش عندك في الملقا؟"]
+  expect_tools: [search_listings]
+  forbid_tools: [update_preferences]
+  expect_prefs: {hard_filters.districts: ["النرجس", "الياسمين"]}
+- name: add_district_keeps_others
+  start_prefs: {districts: ["النرجس"]}
+  messages: ["أضف حي الملقا"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.districts: ["النرجس", "الملقا"]}
+- name: remove_only_named_district
+  start_prefs: {districts: ["النرجس", "الياسمين", "الملقا"]}
+  messages: ["شيل الياسمين"]
+  expect_tools: [update_preferences]
+  expect_prefs: {hard_filters.districts: ["النرجس", "الملقا"]}

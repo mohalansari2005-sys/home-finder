@@ -3,7 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-PropertyType = Literal["villa", "apartment", "floor", "house"]
+# townhouse never comes from a source category: only the ad text check (enrich/text_check.py) sets it
+PropertyType = Literal["villa", "apartment", "floor", "house", "townhouse"]
 Facing = Literal["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest"]
 
 

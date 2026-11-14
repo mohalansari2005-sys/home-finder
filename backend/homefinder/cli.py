@@ -10,7 +10,7 @@ from sqlalchemy import select
 from homefinder import jobs, prefs
 from homefinder.config import get_settings
 from homefinder.db import session_scope
-from homefinder.models import Place
+from homefinder.models import Listing, Place
 from homefinder.photos_prune import prune_photos
 from homefinder.rescore import rescore_all
 
@@ -23,6 +23,27 @@ def _set_place(kind: str, name: str, lat: float, lng: float) -> None:
         row.name, row.lat, row.lng = name, lat, lng
         row.geom = WKTElement(f"POINT({lng} {lat})", srid=4326)
         s.add(row)
+
+
+def _check_text(limit: int) -> None:
+    """Visible listings first: those are the ones the family looks at. Needs OPENAI_API_KEY (run on the Mac)."""
+    from homefinder.integrations.llm import make_llm
+    from homefinder.worker.enrich.text_check import check_text
+    llm = make_llm()
+    if llm is None:
+        print("OPENAI_API_KEY is not set", file=sys.stderr)
+        raise SystemExit(1)
+    with session_scope() as s:
+        rows = list(s.scalars(select(Listing).where(Listing.text_conflicts.is_(None), Listing.merged_into_id.is_(None),
+                                                    Listing.status == "active")
+                              .order_by(Listing.passes_filters.desc(), Listing.score.desc().nulls_last()).limit(limit)))
+        found = 0
+        for l in rows:
+            l.text_conflicts = check_text(llm, l)
+            found += bool(l.text_conflicts)
+        s.flush()
+        rescore_all(s)  # a townhouse may now fail the property type filter
+        print(f"checked {len(rows)} listings, {found} with conflicts")
 
 
 def main(argv=None) -> None:
@@ -40,6 +61,8 @@ def main(argv=None) -> None:
     sub.add_parser("enqueue-scrape")
     pp = sub.add_parser("prune-photos")  # server cron: delete photos of long-gone listings
     pp.add_argument("--days", type=int, default=30)
+    tc = sub.add_parser("check-text")  # once after upgrading: compare ad text with source labels for old listings
+    tc.add_argument("--limit", type=int, default=500)
     sub.add_parser("rescore")  # recompute every listing's filters and score (run once after a scoring change)
     a = ap.parse_args(argv)
 
@@ -65,6 +88,8 @@ def main(argv=None) -> None:
     elif a.cmd == "rescore":
         with session_scope() as s:
             print(f"rescored {rescore_all(s)} listings")
+    elif a.cmd == "check-text":
+        _check_text(a.limit)
     elif a.cmd == "enqueue-scrape":
         with session_scope() as s:
             print(jobs.enqueue(s, "scrape_search", {"source": "aqar", "from_prefs": True, "scheduled": False},

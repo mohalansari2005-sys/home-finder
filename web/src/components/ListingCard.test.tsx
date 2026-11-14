@@ -7,7 +7,7 @@ import { ListingCard } from './ListingCard'
 const base: T = {
   id: 1, title: 'فيلا درج داخلي', property_type: 'villa', price: 1850000, district: 'النرجس', bedrooms: 5,
   bathrooms: 4, built_area_m2: 420, land_area_m2: 312, photo_url: null, score: 82,
-  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null, status: 'active', whatsapp_url: null,
+  commutes: { school: 12, work: null }, family_status: 'new', first_seen: null, lat: 1, lng: 1, price_drop: null, status: 'active', whatsapp_url: null, text_conflicts: {},
 }
 
 it('renders price, district, score and commute chips with missing as dash', () => {
@@ -104,4 +104,17 @@ it('a listing the family already opened is tagged as viewed; new ones are not', 
   expect(screen.getByText('تمت المشاهدة')).toBeInTheDocument()
   rerender(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
   expect(screen.queryByText('تمت المشاهدة')).toBeNull()
+})
+
+it('warns when the ad text names another district or type', () => {
+  render(<ListingCard listing={{ ...base, text_conflicts: {
+    district: { label: 'النرجس', text: 'القيروان' }, property_type: { label: 'villa', text: 'townhouse' } } }}
+    onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.getByText('نص الإعلان يذكر حي القيروان، والموقع يصنّفه في النرجس')).toBeInTheDocument()
+  expect(screen.getByText('نص الإعلان يصفه تاون هاوس، والموقع يصنّفه فيلا')).toBeInTheDocument()
+})
+
+it('shows no warning without conflicts', () => {
+  render(<ListingCard listing={base} onOpen={() => {}} onReact={() => {}} />)
+  expect(screen.queryByText(/نص الإعلان/)).toBeNull()
 })

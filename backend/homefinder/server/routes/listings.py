@@ -79,7 +79,8 @@ def card(l: Listing, photos: list[str] | None, drop: dict | None = None, phone: 
             "land_area_m2": l.land_area_m2, "photo_url": (photos or [None])[0], "score": l.score,
             "commutes": l.commutes or {}, "family_status": l.family_status,
             "status": l.status, "first_seen": l.first_seen.isoformat() if l.first_seen else None, "lat": l.lat, "lng": l.lng,
-            "price_drop": drop, "whatsapp_url": whatsapp_link(phone, l.title, None)}
+            "price_drop": drop, "whatsapp_url": whatsapp_link(phone, l.title, None),
+            "text_conflicts": l.text_conflicts or {}}
 
 
 def visible():

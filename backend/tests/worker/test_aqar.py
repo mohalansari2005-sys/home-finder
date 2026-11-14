@@ -79,7 +79,7 @@ def test_search_by_district_resolves_ids_with_normalization():
     t = FakeTransport([], districts=districts)
     list(AqarAdapter(t, pacer=nosleep_pacer()).search(SearchQuery(districts=["حي النرجس"], max_pages=1)))
     finds = [c for c in t.calls if c["operationName"] == "findListings"]
-    assert len(finds) == 1 and finds[0]["variables"]["where"]["district_id"] == {"eq": 501}
+    assert [c["variables"]["where"]["category"] for c in finds] == [{"eq": 3}]  # one villa search, not two
 
 
 def test_health_flags_mostly_missing_prices():
@@ -131,3 +131,11 @@ def test_fetch_raises_on_unexpected_graphql_error():
     weird = {"data": {"Web": {"listing": None}}, "errors": [{"code": "Boom", "message": ""}]}
     with pytest.raises(RuntimeError):
         AqarAdapter(ByIdTransport(weird), pacer=nosleep_pacer()).fetch("1")
+
+
+def test_townhouses_are_searched_in_the_villa_category_once():
+    page = {"data": {"Web": {"find": {"total": 0, "listings": []}}}}
+    t = FakeTransport([page, page])
+    list(AqarAdapter(t, pacer=nosleep_pacer()).search(SearchQuery(property_types=["villa", "townhouse"], max_pages=1)))
+    finds = [c for c in t.calls if c["operationName"] == "findListings"]
+    assert [c["variables"]["where"]["category"] for c in finds] == [{"eq": 3}]  # one villa search, not two

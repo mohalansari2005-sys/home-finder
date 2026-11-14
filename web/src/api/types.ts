@@ -1,6 +1,9 @@
 export type CommuteKind = 'school' | 'work' | 'university' | 'airport'
 export type FamilyStatus = 'new' | 'seen' | 'bookmarked' | 'rejected' | 'visited'
 
+export interface TextConflicts {
+  district?: { label: string; text: string }; property_type?: { label: string; text: string }
+}
 export interface ListingCard {
   id: number; title: string | null; property_type: string | null; price: number | null; district: string | null
   bedrooms: number | null; bathrooms: number | null; built_area_m2: number | null; land_area_m2: number | null
@@ -9,6 +12,8 @@ export interface ListingCard {
   price_drop: { from: number; to: number; at: string } | null
   /** wa.me link to the seller; null when there is no valid Saudi mobile */
   whatsapp_url: string | null
+  /** where the ad text contradicts the site's labels; {} when it doesn't */
+  text_conflicts: TextConflicts
   /** 'active' | 'removed' (any other value is treated as normal) */
   status: string
 }

@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 SITE = "https://sa.aqar.fm"
 IMAGE_BASE = "https://images.aqar.fm/webp/640x0/props/"  # verified HTTP 200 image/webp, see docs/sources/aqar.md
 CATEGORY_BY_TYPE = {"villa": 3, "apartment": 6, "house": 9, "floor": 22}
+SEARCH_AS = {"townhouse": "villa"}  # Aqar lists townhouses as villas
 TYPE_BY_CATEGORY = {v: k for k, v in CATEGORY_BY_TYPE.items()}
 CITY_IDS = {"الرياض": 21}
 FACING = {1: "north", 2: "east", 3: "west", 4: "south", 5: "northeast", 6: "southeast", 7: "southwest", 8: "northwest"}
@@ -116,7 +117,7 @@ class AqarAdapter:
 
     def search(self, q: SearchQuery) -> Iterator[RawListing]:
         city_id = CITY_IDS[q.city]
-        for ptype in q.property_types:
+        for ptype in dict.fromkeys(SEARCH_AS.get(t, t) for t in q.property_types):
             cat = CATEGORY_BY_TYPE[ptype]
             district_ids: list[int | None] = self._district_ids(cat, city_id, q.districts) if q.districts else [None]
             for did in district_ids:

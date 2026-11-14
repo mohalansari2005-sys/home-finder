@@ -57,17 +57,35 @@ def make_tools(session_factory):
 
     @tool
     def update_preferences(hard_filters: dict | None = None, weights: dict | None = None, targets: dict | None = None,
+                           add_districts: list[str] | None = None, remove_districts: list[str] | None = None,
                            explanation: str = "تعديل عبر المساعد") -> str:
-        """يعدّل التفضيلات. hard_filters وweights وtargets تعديلات جزئية. explanation جملة عربية تشرح التغيير."""
+        """يعدّل التفضيلات. hard_filters وweights وtargets تعديلات جزئية. explanation جملة عربية تشرح التغيير.
+        الأحياء لا تُعدَّل عبر hard_filters: add_districts يضيف أحياء إلى القائمة الحالية، وremove_districts يحذف أحياء
+        طلبت العائلة حذفها بالاسم. النتيجة تحتوي districts (القائمة كاملة بعد التعديل) لتخبر بها العائلة."""
         if changes["done"]:
             return _j({"ok": False, "error": ONE_CHANGE_MSG})
+        if hard_filters and "districts" in hard_filters:
+            return _j({"ok": False, "error": "لا تستبدل قائمة الأحياء: استخدم add_districts للإضافة وremove_districts "
+                                             "للحذف (فقط إذا طلبت العائلة حذف حي بالاسم)."})
         try:
             with session_factory() as s:
-                out = apply_prefs_patch(s, PrefsPatch(hard_filters=hard_filters, weights=weights, targets=targets),
+                hf = dict(hard_filters or {})
+                added, removed = [], []
+                if add_districts or remove_districts:
+                    current = list(prefs.get_or_create(s).hard_filters.get("districts") or [])
+                    drop = {normalize_district(d) for d in remove_districts or []}
+                    kept = [d for d in current if normalize_district(d) not in drop]
+                    removed = [d for d in current if normalize_district(d) in drop]
+                    for d in add_districts or []:
+                        if d.strip() and normalize_district(d) not in {normalize_district(x) for x in kept}:
+                            kept.append(d.strip()); added.append(d.strip())
+                    hf["districts"] = kept
+                out = apply_prefs_patch(s, PrefsPatch(hard_filters=hf or None, weights=weights, targets=targets),
                                         "agent", explanation)
                 rescore_all(s)  # on the server, so the feed and the next search never use stale scores
             changes["done"] += 1
-            return _j({"ok": True, "preferences": out})
+            return _j({"ok": True, "districts": out["hard_filters"].get("districts") or [],
+                       "districts_added": added, "districts_removed": removed, "preferences": out})
         except ValueError as e:  # includes pydantic ValidationError
             return _j({"ok": False, "error": str(e)})
 
@@ -76,7 +94,8 @@ def make_tools(session_factory):
                         property_type: str | None = None, sort: str = "score", limit: int = 5,
                         include_filtered: bool = False) -> str:
         """يبحث في العقارات المحفوظة المطابقة لشروط العائلة (غير المستبعدة). sort: score | price | newest. الحد الأقصى 10.
-        include_filtered=true يضيف العقارات التي أخفتها الفلاتر (فقط إذا طلبت العائلة ذلك)."""
+        include_filtered=true يضيف العقارات التي أخفتها الفلاتر (إذا طلبت العائلة ذلك، أو سألت عن حي ليس في قائمتها).
+        البحث لا يغيّر التفضيلات أبداً."""
         with session_factory() as s:
             q = select(Listing).where(Listing.merged_into_id.is_(None), Listing.status == "active",
                                       Listing.family_status != "rejected")

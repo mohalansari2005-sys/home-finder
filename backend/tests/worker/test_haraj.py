@@ -140,3 +140,16 @@ def test_fetch_returns_listing_or_none():
         def close(self): pass
     a = HarajAdapter(T(), pacer=Pacer(sleep=lambda s: None))
     assert a.fetch("7").source_id == "7" and a.fetch("8") is None
+
+
+def test_townhouses_are_searched_under_the_villa_tag():
+    class T:
+        def __init__(self): self.tags = []
+        def search(self, tag, city, page):
+            self.tags.append(tag)
+            from homefinder.worker.sources.haraj import wrap_posts_for_test
+            return wrap_posts_for_test([])
+        def close(self): pass
+    t = T()
+    list(HarajAdapter(t, pacer=Pacer(sleep=lambda s: None)).search(SearchQuery(property_types=["townhouse"], max_pages=1)))
+    assert t.tags == ["فلل للبيع"]
