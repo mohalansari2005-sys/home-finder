@@ -15,9 +15,8 @@ const stop: TripStop = {
 const view = (s: TripStop, p: Partial<React.ComponentProps<typeof StopCard>> = {}) =>
   render(<MemoryRouter><ol><StopCard tripId={3} stop={s} onPatch={vi.fn()} onUpload={vi.fn()} {...p} /></ol></MemoryRouter>)
 
-it('shows 12-hour times as number islands, flags, whatsapp, and updates status via radio semantics', async () => {
-  const onPatch = vi.fn()
-  view(stop, { onPatch })
+it('shows 12-hour times as number islands, flags and whatsapp, with no contact-status selector', () => {
+  view(stop)
   const range = screen.getByTestId('stop-time')
   expect(range).toHaveTextContent('4:10 – 4:40 م')
   expect(range.querySelectorAll('bdi')).toHaveLength(2)
@@ -25,9 +24,8 @@ it('shows 12-hour times as number islands, flags, whatsapp, and updates status v
   expect(screen.getByText(/تغيّر السعر من/)).toBeInTheDocument()
   expect(screen.getByText('2,050,000')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'مراسلة المعلن عبر واتساب' })).toHaveAttribute('href', stop.whatsapp_url)
-  expect(screen.getByRole('radio', { name: 'لم نتواصل' })).toBeChecked()
-  await userEvent.click(screen.getByRole('radio', { name: 'تمت الزيارة' }))
-  expect(onPatch).toHaveBeenCalledWith({ contact_status: 'visited' })
+  expect(screen.queryByRole('radiogroup')).toBeNull()
+  expect(screen.queryByText('لم نتواصل')).toBeNull()
   expect(screen.queryByRole('button', { name: '1 من 5' })).toBeNull() // rating appears only once visited
 })
 
@@ -40,8 +38,11 @@ it('opens the listing in the app (never the source site), with directions and a 
   await userEvent.click(screen.getByRole('button', { name: 'تمت الزيارة' }))
   expect(onPatch).toHaveBeenCalledWith({ contact_status: 'visited' })
   cleanup()
-  view({ ...stop, contact_status: 'visited', maps_url: null })
-  expect(screen.getByRole('button', { name: 'تمت الزيارة' })).toBeDisabled()
+  view({ ...stop, contact_status: 'visited', maps_url: null }, { onPatch })
+  const visited = screen.getByRole('button', { name: 'تمت الزيارة' })
+  expect(visited).toHaveAttribute('aria-pressed', 'true')
+  await userEvent.click(visited) // a second tap undoes a mistaken one
+  expect(onPatch).toHaveBeenLastCalledWith({ contact_status: 'not_contacted' })
   expect(screen.queryByRole('link', { name: 'خرائط Google' })).toBeNull()
 })
 

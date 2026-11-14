@@ -1,14 +1,13 @@
 import { useId, useState } from 'react'
 import { Camera, Car, FileText, Home, MessageCircle, Phone, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
-import type { ContactStatus, StopPatch, TripStop } from '../../api/types'
+import type { StopPatch, TripStop } from '../../api/types'
 import { ScoreSeal } from '../ScoreSeal'
 import { formatNumber, formatRooms, PROPERTY_TYPE_AR } from '../../lib/format'
-import { CONTACT_STATUSES, MAX_PHOTO_BYTES } from '../../lib/visits'
+import { MAX_PHOTO_BYTES } from '../../lib/visits'
 import { buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { ClockRange } from './Clock'
 import { StarRating } from './StarRating'
@@ -61,9 +60,9 @@ export function StopCard({ tripId, stop, onPatch, onUpload, active }: Props) {
 
         <div className={cn('flex flex-col gap-3 rounded-2xl border bg-card p-3', active && 'ring-2 ring-ring', removed && 'opacity-90')}>
           <Link to={listingPath} className="flex gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <span className="flex h-14 w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground">
+            <span className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground">
               {l.photo_url
-                ? <img src={l.photo_url} alt="" loading="lazy" width={144} height={112} className={cn('size-full object-cover', removed && 'grayscale')} />
+                ? <img src={l.photo_url} alt="" loading="lazy" width={224} height={160} className={cn('size-full object-cover', removed && 'grayscale')} />
                 : <Home className="size-5" strokeWidth={1.75} aria-hidden />}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
@@ -90,17 +89,6 @@ export function StopCard({ tripId, stop, onPatch, onUpload, active }: Props) {
               <span>تغيّر السعر{stop.old_price != null && <> من <bdi>{formatNumber(stop.old_price)}</bdi> ر.س</>}</span>
             </div>
           )}
-
-          <ToggleGroup type="single" aria-label="حالة التواصل" spacing={2} value={stop.contact_status}
-                       onValueChange={(v) => { if (v && v !== stop.contact_status) onPatch({ contact_status: v as ContactStatus }) }}
-                       className="flex w-full flex-wrap rounded-xl bg-muted p-[3px]">
-            {CONTACT_STATUSES.map((s) => (
-              <ToggleGroupItem key={s.value} value={s.value}
-                               className="h-11 min-w-0 grow basis-[28%] rounded-lg px-1 text-sm font-normal hover:bg-background/60 data-[state=on]:bg-background data-[state=on]:font-semibold data-[state=on]:text-primary">
-                {s.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
 
           <Link to={listingPath} className={cn(buttonVariants({ variant: 'secondary' }), 'h-11 rounded-xl')}><FileText aria-hidden strokeWidth={1.75} />فتح الإعلان</Link>
           <StopVisitButtons stop={stop} onPatch={onPatch} />
