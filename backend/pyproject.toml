@@ -23,7 +23,7 @@ server = ["fastapi>=0.115", "uvicorn[standard]>=0.32", "bcrypt>=4.2", "itsdanger
   "curl_cffi>=0.7"]
 worker = ["curl_cffi>=0.7", "playwright>=1.48", "pillow>=11", "imagehash>=4.3",
   "scikit-learn>=1.5", "numpy>=1.26"]
-dev = ["pytest>=8.3", "pyyaml>=6"]
+dev = ["pytest>=8.3", "pyyaml>=6.0.3"]
 
 [tool.setuptools.packages.find]
 include = ["homefinder*"]
