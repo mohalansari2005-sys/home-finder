@@ -2,6 +2,24 @@
 
 A private, Arabic-first PWA that helps my family find a home to **buy in Riyadh**. It gathers listings from Aqar and Haraj, scores each one against what we care about, shows rush-hour drive times to the places we go every day, learns from what we save and reject, and plans visit trips.
 
+## Screenshots
+
+**Home:** the scored listing feed, the price map and the Arabic chat assistant side by side on desktop.
+
+![Home](docs/screenshots/home.png)
+
+**Map:** price pins coloured by score, next to the school and work markers.
+
+![Map](docs/screenshots/map.png)
+
+**Listing:** photos, price, score, drive times and the filters a home doesn't meet.
+
+![Listing](docs/screenshots/listing.png)
+
+**Visits:** suggested trips by district and the planned and past visit days.
+
+![Visits](docs/screenshots/visits.png)
+
 ## Why
 
 Our search was manual and exhausting. Every day someone scrolled Aqar and Haraj, saw the same villa posted by three brokers, opened each ad to find its size and age, pasted the location into Google Maps to guess the 7 a.m. school run, and shared screenshots in the family group. Then we'd lose track of what we liked, what we'd rejected and why, and which sellers we'd called.
